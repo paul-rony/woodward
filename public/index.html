@@ -394,7 +394,8 @@ function setStyle(s) {
   store.set("woodward.style", s);
   document.body.classList.toggle("style-iso", s === "iso");
   for (const b of document.querySelectorAll("[data-style]")) b.setAttribute("aria-pressed", String(b.dataset.style === s));
-  $("scene").hidden = s === "iso";
+  // An <svg> ignores the `hidden` property (it is HTML-only), so the ink picture is hidden with display instead.
+  $("scene").style.display = s === "iso" ? "none" : "";
   $("isoCanvas").hidden = s !== "iso";
   if (s !== "iso") iso?.stop();
   renderScene();
