@@ -1,0 +1,645 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>The Woodward</title>
+<link rel="icon" href="icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=UnifrakturMaguntia&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #2a1d12;
+    --ink-soft: #5a4632;
+    --rubric: #b0302a;
+    --lapis: #2f4f9e;
+    --verdigris: #3f7a5b;
+    --gold: #c9982c;
+    --parchment: #efe2c2;
+    --parchment-edge: #d9c49a;
+    --desk: #2b1d14;
+    --desk-2: #3a271a;
+    --candle: 0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --parchment: #e4d4ae; --parchment-edge: #c9b285; --desk: #160f0a; --desk-2: #22170f; }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: repeating-linear-gradient(92deg, var(--desk) 0 38px, var(--desk-2) 38px 41px, var(--desk) 41px 90px), var(--desk);
+    color: var(--ink);
+    font-family: "IM Fell English", "Iowan Old Style", Georgia, serif;
+    font-size: 17px;
+    line-height: 1.45;
+    overflow-x: hidden;
+  }
+  .desk { min-height: 100%; display: flex; align-items: center; justify-content: center; padding: 18px; }
+  .codex {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) 18px minmax(0, 1fr);
+    width: min(1440px, 100%);
+    height: min(860px, calc(100vh - 36px));
+    filter: drop-shadow(0 18px 30px rgba(0, 0, 0, .55));
+  }
+  .page {
+    position: relative;
+    background:
+      radial-gradient(ellipse at 50% 50%, transparent 55%, rgba(120, 80, 30, .22) 100%),
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .45  0 0 0 0 .32  0 0 0 0 .15  0 0 0 .16 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
+      var(--parchment);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .page::after {
+    /* Candlelight: after dark the pages warm and the corners fall into shadow. */
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse at 60% 40%, rgba(255, 190, 90, calc(var(--candle) * .10)) 0%, rgba(30, 15, 5, calc(var(--candle) * .38)) 100%);
+    transition: background 4s;
+  }
+  .left { border-radius: 6px 2px 2px 6px; padding: 22px 26px 16px 30px; }
+  .right { border-radius: 2px 6px 6px 2px; padding: 0 30px 18px 26px; }
+  .gutter { background: linear-gradient(90deg, rgba(0,0,0,.28), rgba(0,0,0,.05) 40%, rgba(0,0,0,.05) 60%, rgba(0,0,0,.28)), var(--parchment-edge); }
+
+  .rubric-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+  h1, h2, h3 { font-weight: normal; margin: 0; }
+  h1 { font-family: "UnifrakturMaguntia", "IM Fell English", serif; color: var(--rubric); font-size: 34px; line-height: 1.1; }
+  h2 { font-family: "IM Fell English SC", serif; color: var(--rubric); font-size: 22px; letter-spacing: .02em; margin: 18px 0 6px; }
+  h3 { font-family: "IM Fell English SC", serif; font-size: 18px; }
+  .stage { flex: 1; min-height: 0; container-type: size; display: flex; align-items: flex-start; justify-content: center; }
+  .frame { position: relative; width: min(100cqw, 100cqh * 4 / 3); aspect-ratio: 4 / 3; border: 2px solid var(--ink); outline: 1px solid var(--rubric); outline-offset: -7px; background: #e9dab6; overflow: hidden; }
+  .frame svg { display: block; width: 100%; height: 100%; }
+  .caption { margin-top: 8px; font-style: italic; color: var(--ink-soft); text-align: center; min-height: 1.4em; }
+
+  button { font: inherit; color: inherit; cursor: pointer; }
+  .seal {
+    border: none; background: radial-gradient(circle at 35% 30%, #d0564a, #962a22 70%); color: #fbe9d0;
+    padding: 6px 14px; border-radius: 999px; box-shadow: 0 2px 0 #6e1d17, inset 0 0 0 2px rgba(255,255,255,.12);
+    font-family: "IM Fell English SC", serif; font-size: 16px; white-space: nowrap;
+  }
+  .seal:hover { filter: brightness(1.08); }
+  .seal:disabled { background: #b9a888; box-shadow: 0 2px 0 #8e7d5e; color: #f3eada; cursor: default; filter: none; }
+  .seal.green { background: radial-gradient(circle at 35% 30%, #5d9a74, #2f6447 70%); box-shadow: 0 2px 0 #1f4430; }
+  .link { background: none; border: none; color: var(--lapis); text-decoration: underline; text-decoration-style: dotted; padding: 0; }
+
+  .ribbons { display: flex; gap: 8px; padding: 0 4px; margin-bottom: 6px; }
+  .ribbon {
+    border: none; padding: 16px 12px 14px; min-width: 76px;
+    color: #fbefd8; font-family: "IM Fell English SC", serif; font-size: 16px;
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 86%, 0 100%);
+    transform: translateY(-6px); transition: transform .2s;
+  }
+  .ribbon[aria-selected="true"] { transform: translateY(0); padding-bottom: 22px; }
+  .ribbon[data-tab="hour"] { background: var(--rubric); }
+  .ribbon[data-tab="book"] { background: var(--lapis); }
+  .ribbon[data-tab="works"] { background: var(--verdigris); }
+  .ribbon[data-tab="chronicle"] { background: #7a5a2a; }
+  .body { overflow-y: auto; flex: 1; min-height: 0; padding-right: 6px; scrollbar-width: thin; scrollbar-color: var(--parchment-edge) transparent; }
+  .body p { margin: 0 0 10px; }
+  .dropcap::first-letter {
+    font-family: "UnifrakturMaguntia", serif; float: left; font-size: 3.4em; line-height: .9; padding: 4px 8px 0 0; color: var(--rubric);
+  }
+  .rule { border: none; border-top: 1px solid var(--ink-soft); opacity: .4; margin: 14px 0; }
+  .danger { color: var(--rubric); }
+  .muted { color: var(--ink-soft); }
+
+  .store { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px 10px; }
+  .good { display: flex; align-items: center; gap: 6px; }
+  .good svg { width: 30px; height: 30px; flex: none; }
+  .good b { font-family: Georgia, serif; font-weight: normal; font-size: 18px; color: var(--rubric); min-width: 1.2em; }
+  .rows { display: grid; gap: 6px; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .row .what { min-width: 0; }
+  .row .what small { display: block; color: var(--ink-soft); font-style: italic; }
+  .letter { background: rgba(255,255,255,.28); border: 1px solid var(--parchment-edge); padding: 10px 14px; margin: 6px 0 12px; font-style: italic; }
+  .letter ul { margin: 6px 0 8px; padding-left: 20px; }
+
+  .book-count { color: var(--ink-soft); font-style: italic; }
+  .roundels { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 10px; }
+  .roundel { background: none; border: none; padding: 0; text-align: center; font-size: 14px; line-height: 1.15; }
+  .roundel svg { width: 76px; height: 76px; display: block; margin: 0 auto 2px; }
+  .roundel.unseen { color: var(--ink-soft); }
+  .unseen-art path, .unseen-art circle { fill: #cdb98f !important; stroke: #b8a37a !important; }
+  svg.big { width: 220px; height: 220px; display: block; margin: 4px auto 8px; }
+  .latin { font-style: italic; color: var(--ink-soft); }
+
+  .work { border-top: 1px solid rgba(42,29,18,.2); padding: 10px 0; }
+  .work .cost { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 15px; margin: 4px 0 6px; }
+  .work .short { color: var(--rubric); }
+
+  .chron-day { font-family: "IM Fell English SC", serif; color: var(--rubric); margin: 14px 0 4px; }
+  .chron { display: grid; grid-template-columns: 52px 1fr; gap: 2px 10px; font-size: 16px; }
+  .chron time { color: var(--ink-soft); font-size: 14px; padding-top: 2px; }
+  .k-danger { color: var(--rubric); }
+  .k-wat { color: #3d5f2c; }
+  .k-book { color: var(--lapis); }
+  .k-gap { font-style: italic; color: var(--ink-soft); }
+  .k-guard { color: #4d4030; }
+
+  .tip {
+    position: absolute; pointer-events: none; max-width: 260px; background: var(--parchment); border: 1px solid var(--ink);
+    padding: 6px 10px; font-size: 15px; line-height: 1.3; box-shadow: 0 4px 10px rgba(0,0,0,.25); z-index: 3;
+  }
+  .tip b { font-family: "IM Fell English SC", serif; font-weight: normal; color: var(--rubric); }
+  .note {
+    position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); max-width: min(520px, calc(100% - 32px));
+    background: var(--parchment); border: 2px solid var(--rubric); padding: 10px 18px; font-size: 17px; z-index: 10;
+    box-shadow: 0 8px 24px rgba(0,0,0,.4); text-align: center;
+  }
+  dialog { border: 2px solid var(--ink); outline: 1px solid var(--rubric); outline-offset: -6px; background: var(--parchment); color: var(--ink); max-width: 420px; padding: 22px 24px; }
+  dialog::backdrop { background: rgba(10, 12, 40, .55); }
+  dialog .actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px; }
+
+  .hit { cursor: pointer; }
+  .bob { animation: bob 2.4s ease-in-out infinite; }
+  .twinkle { animation: twinkle 3.5s ease-in-out infinite; }
+  .flicker { animation: flicker 1.3s ease-in-out infinite; }
+  .pulse { animation: pulse 3s ease-in-out infinite; }
+  .blink { animation: blink 6s step-end infinite; }
+  .drift { animation: drift 5s ease-in-out infinite; }
+  @keyframes bob { 50% { transform: translateY(-5px); } }
+  @keyframes twinkle { 50% { opacity: .35; } }
+  @keyframes flicker { 0%, 100% { opacity: 1; } 40% { opacity: .78; } 70% { opacity: .92; } }
+  @keyframes pulse { 50% { opacity: .65; } }
+  @keyframes blink { 0%, 100% { opacity: 1; } 47% { opacity: 0; } 50% { opacity: 1; } 88% { opacity: 0; } 90% { opacity: 1; } }
+  @keyframes drift { 50% { transform: translateX(4px); opacity: .45; } }
+  @media (prefers-reduced-motion: reduce) { .bob, .twinkle, .flicker, .pulse, .blink, .drift { animation: none; } }
+
+  @media (max-width: 900px) {
+    body { font-size: 16px; }
+    .desk { padding: 10px 6px; align-items: flex-start; }
+    .codex { grid-template-columns: 1fr; grid-template-rows: auto 12px auto; height: auto; }
+    .gutter { background: linear-gradient(180deg, rgba(0,0,0,.25), rgba(0,0,0,.05) 50%, rgba(0,0,0,.25)), var(--parchment-edge); }
+    .left { padding: 14px 16px 10px; border-radius: 6px 6px 2px 2px; }
+    .right { padding: 0 16px 16px; border-radius: 2px 2px 6px 6px; }
+    .stage { flex: none; container-type: inline-size; }
+    .frame { width: 100%; }
+    .body { overflow: visible; }
+    h1 { font-size: 26px; }
+    .ribbon { min-width: 0; flex: 1; padding: 12px 4px 10px; font-size: 14px; }
+  }
+</style>
+</head>
+<body>
+<main class="desk">
+  <div class="codex" id="codex">
+    <section class="page left">
+      <div class="rubric-head">
+        <h1 id="sceneTitle">Of the Wood</h1>
+        <button class="seal" id="towerBtn">Climb the tower</button>
+      </div>
+      <div class="stage">
+        <div class="frame" id="frame">
+          <svg id="scene" viewBox="0 0 800 600" role="img" aria-label="The wood"></svg>
+          <div class="tip" id="tip" hidden></div>
+        </div>
+      </div>
+      <div class="caption" id="caption">The candle is lit…</div>
+    </section>
+    <div class="gutter"></div>
+    <section class="page right">
+      <nav class="ribbons" role="tablist">
+        <button class="ribbon" role="tab" data-tab="hour" aria-selected="true">The Hour</button>
+        <button class="ribbon" role="tab" data-tab="book" aria-selected="false">Bestiary</button>
+        <button class="ribbon" role="tab" data-tab="works" aria-selected="false">Works</button>
+        <button class="ribbon" role="tab" data-tab="chronicle" aria-selected="false">Chronicle</button>
+      </nav>
+      <div class="body" id="pageBody"><p class="muted">Opening the codex…</p></div>
+    </section>
+  </div>
+  <div class="note" id="note" hidden></div>
+  <dialog id="confirm">
+    <p id="confirmText"></p>
+    <div class="actions"><button class="seal green" value="no" id="confirmNo">Stay in</button><button class="seal" value="yes" id="confirmYes">Go down</button></div>
+  </dialog>
+</main>
+
+<script type="module">
+import { ENTRIES, ENTRY, GROUPS, entryHint } from "./bestiary.mjs";
+import { DEFS, drawEntry } from "./figures.mjs";
+import { setBoil, star, PIGMENT } from "./ink.mjs";
+import { towerScene, woodScene } from "./scenes.mjs";
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+};
+
+let snap = null;
+let skew = 0;
+let view = store.get("woodward.view") === "tower" ? "tower" : "wood";
+let tab = store.get("woodward.tab") || "hour";
+let bookEntry = null;
+let letter = null;
+let helloSent = false;
+const now = () => Date.now() + skew;
+
+// ---- Words -----------------------------------------------------------------------------------------------------
+
+const ORD = ["first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth", "thirteenth", "fourteenth", "fifteenth", "sixteenth", "seventeenth", "eighteenth", "nineteenth", "twentieth"];
+function ordinal(n) {
+  if (n <= 20) return ORD[n - 1];
+  const tens = n < 30 ? "twenty" : "thirty";
+  return n % 10 ? `${tens}-${ORD[(n % 10) - 1]}` : `${tens === "twenty" ? "twentieth" : "thirtieth"}`;
+}
+function tzOpt() {
+  return snap?.location?.tz ? { timeZone: snap.location.tz } : {};
+}
+function parts(ms) {
+  const p = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", ...tzOpt() }).formatToParts(ms);
+  const get = (t) => p.find((x) => x.type === t)?.value;
+  return { day: Number(get("day")), month: get("month"), year: Number(get("year")) - 876 };
+}
+function medievalDate(ms) {
+  const { day, month, year } = parts(ms);
+  return `the ${ordinal(day)} day of ${month}, in the year of Our Lord ${year}`;
+}
+function shortDate(ms) {
+  const { day, month, year } = parts(ms);
+  return `${day} ${month}, AD ${year}`;
+}
+function clock(ms) {
+  return new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit", ...tzOpt() }).format(ms);
+}
+function hours(h) {
+  if (h < 1) return `${Math.max(1, Math.round(h * 60))} minutes`;
+  if (h < 1.5) return "about an hour";
+  return `about ${Math.round(h)} hours`;
+}
+function yieldWords(y) {
+  return Object.entries(y).map(([r, n]) => `${n} ${r}`).join(", ");
+}
+const RES = {
+  timber: { name: "Timber", entry: "oak" }, poles: { name: "Poles", entry: "hazel" }, berries: { name: "Berries", entry: "bramble" },
+  honey: { name: "Honey", entry: "bees" }, mushrooms: { name: "Mushrooms", entry: "flyagaric" }, moonwort: { name: "Moonwort", entry: "moonwort" },
+  blessings: { name: "Blessings", entry: null },
+};
+
+function icon(entryId, size = 30, cls = "") {
+  const inner = entryId
+    ? drawEntry(ENTRY[entryId], 0, 0, 1, { key: `icon-${entryId}` })
+    : star(0, -14, 12, PIGMENT.gold, { points: 6 });
+  return `<svg viewBox="-30 -46 60 56" width="${size}" height="${size}" class="${cls}" aria-hidden="true"><defs>${DEFS}</defs>${inner}</svg>`;
+}
+
+/** An entry drawn in a roundel, framed to fit whatever shape it is. */
+function roundel(e, seen, big = false) {
+  const box = { quad: "-60 -80 120 92", bird: "-50 -62 100 72", folk: "-50 -66 100 74", herb: "-30 -42 60 50", light: "-60 -60 120 80" }[e.art.shape];
+  return `<svg viewBox="${box}" class="fit${big ? " big" : ""}${seen ? "" : " unseen-art"}" aria-hidden="true"><defs>${DEFS}</defs><g>${drawEntry(e, 0, 0, 1, { key: `book-${e.id}`, night: e.art.shape === "light" })}</g></svg>`;
+}
+
+/** Frames each drawing to its own extent, so a hedgehog fills its roundel as well as a hart. */
+function fitDrawings(root) {
+  for (const svg of root.querySelectorAll("svg.fit")) {
+    const b = svg.lastElementChild.getBBox();
+    if (!b.width) continue;
+    const side = Math.max(b.width, b.height) * 1.12;
+    svg.setAttribute("viewBox", `${b.x + b.width / 2 - side / 2} ${b.y + b.height / 2 - side / 2} ${side} ${side}`);
+  }
+}
+
+// ---- The left page ---------------------------------------------------------------------------------------------
+
+function renderScene() {
+  if (!snap) return;
+  $("scene").innerHTML = view === "tower" ? towerScene(snap) : woodScene(snap, now());
+  $("sceneTitle").textContent = view === "tower" ? "From the Tower" : "Of the Wood";
+  $("towerBtn").textContent = view === "tower" ? "Go down" : "Climb the tower";
+  const c = snap.env.canonical;
+  const hourWords = c.hour ? `the ${c.ordinal} hour of the ${c.of}` : `the ${c.of}`;
+  $("caption").textContent = `${c.office} · ${hourWords} · ${shortDate(snap.now)}`;
+  document.documentElement.style.setProperty("--candle", (1 - snap.env.light).toFixed(2));
+}
+
+function tipFor(target) {
+  if (target.dataset.tower) return target.dataset.tower === "up" ? "<b>The tower</b><br>Climb up and look out over the country." : "<b>The stair</b><br>Go back down to the clearing.";
+  if (target.dataset.node) {
+    const n = snap.nodes[target.dataset.node];
+    if (!n) return "";
+    let status;
+    if (n.kind === "moonwort") status = n.stage === "bloom" ? "Open, glowing in the dark. Gather it before sunrise." : n.stage === "picked" ? "Picked. It will bud again after sunrise." : "A closed bud. It opens in full darkness.";
+    else if (n.ready) status = `Ready: ${yieldWords(n.yield)}.`;
+    else status = `${Math.floor(n.growth * 100)} parts in a hundred grown. ${n.etaHours ? `Ready in ${hours(n.etaHours)} at this light.` : "It will not grow at this hour."}`;
+    return `<b>${esc(n.name)}</b><br>${status}<br><i>${esc(n.rule)}</i>`;
+  }
+  if (target.dataset.sighting) {
+    const s = snap.sightings.find((x) => x.id === Number(target.dataset.sighting));
+    if (!s) return "";
+    const e = ENTRY[s.entry];
+    return snap.book[s.entry] ? `<b>${esc(e.name)}</b><br>Already in the Bestiary. Look again anyway.` : `<b>Something ${{ sky: "in the sky", hills: "on the hills", village: "by the village", road: "on the road", river: "by the river", field: "in the fields", wood: "at the wood's edge" }[e.where]}</b><br>Look closer to write it into the Bestiary.`;
+  }
+  return "";
+}
+
+$("scene").addEventListener("pointermove", (ev) => {
+  const t = ev.target.closest(".hit");
+  const tip = $("tip");
+  if (!t || !snap || ev.pointerType === "touch") return void (tip.hidden = true);
+  const html = tipFor(t);
+  if (!html) return void (tip.hidden = true);
+  tip.innerHTML = html;
+  tip.hidden = false;
+  const box = $("frame").getBoundingClientRect();
+  const x = ev.clientX - box.left, y = ev.clientY - box.top;
+  tip.style.left = `${Math.min(x + 14, box.width - tip.offsetWidth - 6)}px`;
+  tip.style.top = `${y + 18 + tip.offsetHeight > box.height ? y - tip.offsetHeight - 10 : y + 18}px`;
+});
+$("scene").addEventListener("pointerleave", () => ($("tip").hidden = true));
+$("scene").addEventListener("click", async (ev) => {
+  const t = ev.target.closest(".hit");
+  if (!t || !snap) return;
+  $("tip").hidden = true;
+  if (t.dataset.tower) return setView(t.dataset.tower === "up" ? "tower" : "wood");
+  if (t.dataset.node) return gather(t.dataset.node);
+  if (t.dataset.sighting) return lookAt(Number(t.dataset.sighting));
+});
+$("towerBtn").addEventListener("click", () => setView(view === "tower" ? "wood" : "tower"));
+
+function setView(v) {
+  view = v;
+  store.set("woodward.view", v);
+  renderScene();
+}
+
+// ---- Actions ---------------------------------------------------------------------------------------------------
+
+async function post(path, body) {
+  const res = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  return res.json();
+}
+
+function note(text, ms = 4200) {
+  const n = $("note");
+  n.innerHTML = text;
+  n.hidden = false;
+  clearTimeout(note.timer);
+  note.timer = setTimeout(() => (n.hidden = true), ms);
+}
+
+function confirmDark(text) {
+  return new Promise((resolve) => {
+    const d = $("confirm");
+    $("confirmText").innerHTML = text;
+    const done = (v) => () => { d.close(); resolve(v); };
+    $("confirmYes").onclick = done(true);
+    $("confirmNo").onclick = done(false);
+    d.oncancel = done(false);
+    d.showModal();
+  });
+}
+
+async function gather(id) {
+  const n = snap.nodes[id];
+  if (!n) return;
+  if (snap.you.restUntil && now() < snap.you.restUntil) return note(`You are nursing your ankle by the fire until ${clock(snap.you.restUntil)}.`);
+  if (!n.ready) return note(`The ${esc(n.name)} has nothing to give yet. <i>${esc(n.rule)}</i>`);
+  if (snap.env.risk > 0) {
+    const go = await confirmDark(`It is dark, and there are wolves in the wood. Going down to the <b>${esc(n.name)}</b> carries <b class="danger">${Math.round(snap.env.risk * 100)} chances in a hundred</b> of misfortune.${snap.built.kennel ? "" : " Bran would halve it."}${snap.built.brazier ? "" : " So would a brazier."}`);
+    if (!go) return;
+  }
+  const r = await post("/api/gather", { id });
+  if (r.ok) note(`You brought back <b>${yieldWords(r.yield)}</b> from the ${esc(n.name)}.`);
+  else note(`<span class="danger">${esc(r.message)}</span>`, 6000);
+}
+
+async function lookAt(id) {
+  const s = snap.sightings.find((x) => x.id === id);
+  const r = await post("/api/look", { id });
+  if (!r.ok) return note(esc(r.message));
+  const e = ENTRY[r.entry ?? s?.entry];
+  if (r.isNew) {
+    note(`A new page in the Bestiary: <b>${esc(e.name)}</b>.`);
+    bookEntry = e.id;
+    setTab("book");
+  } else note(`${e.blessing ? "The white hart again. A blessing on the wood." : `The ${esc(e.name)}, already in the Bestiary.`}`);
+}
+
+async function raise(id) {
+  const r = await post("/api/build", { id });
+  if (!r.ok) note(esc(r.error));
+}
+
+// ---- The right page --------------------------------------------------------------------------------------------
+
+function setTab(t) {
+  tab = t;
+  store.set("woodward.tab", t);
+  if (t !== "book") bookEntry = null;
+  for (const b of document.querySelectorAll(".ribbon")) b.setAttribute("aria-selected", String(b.dataset.tab === t));
+  renderPage();
+  $("pageBody").scrollTop = 0;
+}
+for (const b of document.querySelectorAll(".ribbon")) b.addEventListener("click", () => setTab(b.dataset.tab));
+
+function renderPage() {
+  if (!snap) return;
+  const html = { hour: hourPage, book: bookPage, works: worksPage, chronicle: chroniclePage }[tab]();
+  const body = $("pageBody");
+  const top = body.scrollTop;
+  body.innerHTML = html;
+  fitDrawings(body);
+  body.scrollTop = top;
+}
+
+function hourPage() {
+  const env = snap.env, c = env.canonical;
+  const hourWords = c.hour ? `the ${c.ordinal} hour of the ${c.of}` : `deep in the ${c.of}`;
+  const sunLine = env.sun.elevation > -0.833
+    ? (env.sunset ? `The sun will set at ${clock(env.sunset)}.` : "")
+    : (env.sunrise ? `The sun will rise at ${clock(env.sunrise)}.` : "");
+  const moonLine = `The moon is ${env.moon.name.toLowerCase().replace("new moon", "new and dark")}${env.moon.elevation > 0 ? ", and stands in the sky" : ", and has not risen"}.`;
+  const danger = env.risk > 0
+    ? `<span class="danger">The wood is dangerous after dark. Whoever goes down now runs ${Math.round(env.risk * 100)} chances in a hundred of misfortune.</span> From the tower, all is safe to watch.`
+    : "The wood is safe to walk by daylight.";
+  let out = `<h2>The Hour</h2><p class="dropcap">It is ${c.office}, ${hourWords}, on ${medievalDate(snap.now)}. ${sunLine} ${moonLine} ${danger}</p>`;
+  if (letter) out += letter;
+
+  out += `<h2>The Store</h2><div class="store">${Object.entries(RES).map(([r, d]) => `<div class="good">${icon(d.entry)}<span><b>${snap.inv[r] ?? 0}</b> ${d.name}</span></div>`).join("")}</div>`;
+
+  out += `<h2>In the Wood</h2><div class="rows">`;
+  for (const [id, n] of Object.entries(snap.nodes)) {
+    let status;
+    if (n.kind === "moonwort") status = n.stage === "bloom" ? "Open in the dark glade, until sunrise." : n.stage === "picked" ? "Picked. It buds again after sunrise." : "A closed bud. It opens in full darkness.";
+    else if (n.ready) status = `Ready: ${yieldWords(n.yield)}.`;
+    else status = n.etaHours ? `Ready in ${hours(n.etaHours)} at this light.` : `Not growing at this hour. ${n.rule}`;
+    out += `<div class="row"><div class="what">${esc(n.name)}<small>${status}</small></div>${n.ready ? `<button class="seal" data-gather="${id}">Gather</button>` : ""}</div>`;
+  }
+  out += `</div>`;
+
+  out += `<h2>The Household</h2><div class="rows">`;
+  const resting = snap.you.restUntil && now() < snap.you.restUntil;
+  out += `<div class="row"><div class="what">Yourself<small>${resting ? `<span class="danger">Nursing a twisted ankle until ${clock(snap.you.restUntil)}.</span>` : "Hale, and ready to go out."}</small></div></div>`;
+  if (snap.built.cot) {
+    const w = snap.wat;
+    const doing = w.onWatch ? "Keeping the night watch from the tower, slate in hand." : !w.awake ? "Asleep behind a barred door." : w.state === "walking" ? `On his way to the ${esc(snap.nodes[w.target]?.name ?? "wood")}.` : "Looking about for something ready to gather.";
+    out += `<div class="row"><div class="what">Wat, your apprentice<small>${doing}</small></div></div>`;
+  }
+  if (snap.built.kennel) out += `<div class="row"><div class="what">Bran, the hound<small>${snap.env.light < 0.4 ? "On guard, ears up." : "Asleep in the sun."} Has driven off poachers ${snap.stats.raidsDriven} times.</small></div></div>`;
+  out += `</div>`;
+
+  const awake = now() - snap.stats.awakeSince;
+  out += `<hr class="rule"><p class="muted">The wood has been awake for ${awakeWords(awake)} without a break. Your computer has kept watch through ${snap.stats.nightsWatched} ${snap.stats.nightsWatched === 1 ? "night" : "nights"}.</p>`;
+  const loc = snap.location;
+  out += `<p class="muted">The wood lies at ${Math.abs(loc.lat).toFixed(1)}° ${loc.lat >= 0 ? "N" : "S"}, ${Math.abs(loc.lon).toFixed(1)}° ${loc.lon >= 0 ? "E" : "W"}${loc.guessed ? ", reckoned from your timezone" : ""}. <button class="link" id="locHere">Use where I am</button> · <button class="link" id="locSet">Set it by hand</button></p>`;
+  return out;
+}
+
+function awakeWords(ms) {
+  const h = Math.floor(ms / 3_600_000);
+  if (h < 1) return `${Math.max(1, Math.round(ms / 60_000))} minutes`;
+  if (h < 48) return `${h} hours`;
+  return `${Math.floor(h / 24)} days and ${h % 24} hours`;
+}
+
+function bookPage() {
+  if (bookEntry) return bookDetail(ENTRY[bookEntry]);
+  const seen = ENTRIES.filter((e) => snap.book[e.id]).length;
+  let out = `<h2>Bestiarium &amp; Herbal</h2><p class="book-count">${seen} of ${ENTRIES.length} pages illuminated. Climb the tower to look for more; Wat keeps the night watch once the tower lantern is lit.</p>`;
+  for (const [g, title] of Object.entries(GROUPS)) {
+    out += `<h3>${title}</h3><div class="roundels">`;
+    for (const e of ENTRIES.filter((x) => x.group === g)) {
+      const s = !!snap.book[e.id];
+      out += `<button class="roundel${s ? "" : " unseen"}" data-entry="${e.id}">${roundel(e, s)}${s ? esc(e.name) : "?"}</button>`;
+    }
+    out += `</div>`;
+  }
+  return out;
+}
+
+function bookDetail(e) {
+  const page = snap.book[e.id];
+  let out = `<p><button class="link" id="bookBack">← Back to the Bestiary</button></p>`;
+  out += roundel(e, !!page, true);
+  if (!page) {
+    out += `<h2>A blank page</h2><p class="muted">${esc(GROUPS[e.group])}. ${esc(entryHint(e, snap.location.lat < 0))}</p>`;
+    return out;
+  }
+  out += `<h2>${esc(e.name)}</h2><p class="latin">${esc(e.latin)}</p><p class="dropcap">${esc(e.text)}</p>`;
+  out += `<hr class="rule"><p class="muted">First seen on ${medievalDate(page.first)}, at ${clock(page.first)}${page.by === "wat" ? ", by Wat on the night watch" : ""}. Seen ${page.count} ${page.count === 1 ? "time" : "times"}.${e.blessing ? ` Each sighting is a blessing on the wood.` : ""}</p>`;
+  return out;
+}
+
+function worksPage() {
+  let out = `<h2>Works</h2><p class="muted">Things to raise in and about the wood, paid for from the store.</p>`;
+  for (const b of snap.builds) {
+    const cost = Object.entries(b.cost).map(([r, n]) => `<span class="${(snap.inv[r] ?? 0) >= n ? "" : "short"}">${n} ${RES[r]?.name.toLowerCase() ?? r} <span class="muted">(${snap.inv[r] ?? 0})</span></span>`).join("");
+    const needs = b.needs && !snap.built[b.needs] ? `<span class="short">Needs the ${esc(snap.builds.find((x) => x.id === b.needs).name)} first.</span>` : "";
+    out += `<div class="work"><div class="row"><h3>${esc(b.name)}</h3>${b.built ? `<span class="muted">Raised ${shortDate(snap.built[b.id])}</span>` : `<button class="seal" data-raise="${b.id}" ${b.affordable ? "" : "disabled"}>Raise it</button>`}</div><p>${esc(b.desc)}</p>${b.built ? "" : `<div class="cost">${cost}${needs}</div>`}</div>`;
+  }
+  return out;
+}
+
+function chroniclePage() {
+  markRead();
+  let out = `<h2>The Chronicle</h2><p class="muted">What passed in the wood, written as it happened, whether or not you were there to see it.</p>`;
+  let day = "";
+  for (const j of [...snap.journal].reverse()) {
+    const d = shortDate(j.t);
+    if (d !== day) {
+      if (day) out += `</div>`;
+      out += `<div class="chron-day">${d}</div><div class="chron">`;
+      day = d;
+    }
+    out += `<time>${clock(j.t)}</time><span class="k-${j.kind}">${esc(j.text)}</span>`;
+  }
+  if (day) out += `</div>`;
+  return out;
+}
+
+$("pageBody").addEventListener("click", async (ev) => {
+  const t = ev.target.closest("button");
+  if (!t) return;
+  if (t.dataset.gather) return gather(t.dataset.gather);
+  if (t.dataset.raise) return raise(t.dataset.raise);
+  if (t.dataset.entry) { bookEntry = t.dataset.entry; renderPage(); $("pageBody").scrollTop = 0; return; }
+  if (t.id === "bookBack") { bookEntry = null; return renderPage(); }
+  if (t.id === "letterDone") { markRead(); letter = null; return renderPage(); }
+  if (t.id === "locHere") {
+    if (!navigator.geolocation) return note("This browser will not say where it is.");
+    navigator.geolocation.getCurrentPosition(
+      (p) => post("/api/location", { lat: p.coords.latitude, lon: p.coords.longitude }).then(() => note("The wood now lies where you are.")),
+      () => note("The browser would not say where you are. Set it by hand instead."),
+    );
+  }
+  if (t.id === "locSet") {
+    const v = prompt("Latitude and longitude of your wood, e.g. 51.5, -0.1", `${snap.location.lat.toFixed(2)}, ${snap.location.lon.toFixed(2)}`);
+    if (!v) return;
+    const [lat, lon] = v.split(",").map(Number);
+    const r = await post("/api/location", { lat, lon });
+    note(r.ok ? "The wood has moved. The sun will follow." : esc(r.error));
+  }
+});
+
+// ---- While you were away ---------------------------------------------------------------------------------------
+
+function markRead() {
+  const last = snap.journal.at(-1)?.id;
+  if (last) store.set("woodward.lastSeen", String(last));
+}
+
+/** A note from Wat summing up what happened since this browser last read the Chronicle. */
+function buildLetter() {
+  const last = Number(store.get("woodward.lastSeen") || 0);
+  if (!last) return markRead();
+  const since = snap.journal.filter((j) => j.id > last && j.kind !== "you" && j.kind !== "build");
+  if (!since.length) return;
+  const gains = {};
+  for (const j of since) if (j.kind === "wat" && j.gain) for (const [r, n] of Object.entries(j.gain)) gains[r] = (gains[r] ?? 0) + n;
+  const lines = [];
+  if (Object.keys(gains).length) lines.push(`I brought in ${yieldWords(gains)}.`);
+  const pages = since.filter((j) => j.kind === "book").map((j) => ENTRY[j.entry]?.name).filter(Boolean);
+  if (pages.length) lines.push(`New pages in the Bestiary: ${pages.join(", ")}.`);
+  const driven = since.filter((j) => j.kind === "guard").length;
+  if (driven) lines.push(`Bran drove off poachers ${driven === 1 ? "once" : `${driven} times`}.`);
+  for (const j of since.filter((x) => x.kind === "danger" || x.kind === "gap" || x.kind === "miss")) lines.push(j.text);
+  const nights = since.filter((j) => j.kind === "dawn").length;
+  if (nights) lines.push(`The watch was kept through ${nights === 1 ? "the night" : `${nights} nights`}.`);
+  if (!lines.length) return;
+  letter = `<div class="letter"><b>Master,</b> while you were away:<ul>${lines.slice(0, 8).map((l) => `<li>${esc(l)}</li>`).join("")}</ul>Your servant, Wat${snap.built.cot ? "" : " (who has no cot yet, and slept under a hedge)"}. <button class="link" id="letterDone">Put the letter away</button></div>`;
+}
+
+// ---- Live ------------------------------------------------------------------------------------------------------
+
+function onSnapshot(s) {
+  const first = !snap;
+  snap = s;
+  skew = s.now - Date.now();
+  if (first) {
+    buildLetter();
+    setTab(tab);
+    if (!helloSent && s.location.guessed && !s.location.tz) {
+      helloSent = true;
+      post("/api/hello", { tz: Intl.DateTimeFormat().resolvedOptions().timeZone, offsetMinutes: new Date().getTimezoneOffset() });
+    }
+  } else renderPage();
+  renderScene();
+}
+
+function connect() {
+  const es = new EventSource("/api/events");
+  es.onmessage = (m) => onSnapshot(JSON.parse(m.data));
+  es.onerror = () => {
+    $("caption").textContent = "The candle gutters… reconnecting to the wood.";
+  };
+}
+connect();
+
+// Line boil: the ink redraws itself through three hands, a few times a second, unless motion is unwelcome.
+if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  let b = 0;
+  setInterval(() => {
+    if (document.hidden || !snap) return;
+    b = (b + 1) % 3;
+    setBoil(b);
+    renderScene();
+  }, 700);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+{
+  "name": "The Woodward",
+  "description": "Keep a 12th-century wood by the real sun and moon. Wat gathers and keeps the night watch while you are away, as long as your computer is awake.",
+  "icon": "public/icon.svg",
+  "start": "node server.mjs"
+}
