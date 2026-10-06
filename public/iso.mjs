@@ -392,7 +392,8 @@ function quadFigure(a, x, z, s = 1, rotY = 0) {
   const m = col(hex(a.color));
   const by = L + 0.3 * sz;
   g.add(mesh(GEO.ball, m, [0, by, 0], [0.75 * sz, 0.32 * sz, 0.3 * sz]));
-  for (const [lx, lz] of [[-0.5, -0.15], [-0.5, 0.15], [0.5, -0.15], [0.5, 0.15]]) g.add(mesh(GEO.box, m, [lx * sz, L / 2, lz * sz], [0.09 * sz, L, 0.09 * sz]));
+  const legTop = L + 0.28 * sz; // legs run up into the body, so none hangs loose under its curve
+  for (const [lx, lz] of [[-0.45, -0.15], [-0.45, 0.15], [0.45, -0.15], [0.45, 0.15]]) g.add(mesh(GEO.box, m, [lx * sz, legTop / 2, lz * sz], [0.09 * sz, legTop, 0.09 * sz]));
   const tall = a.legs === "long" && sz >= 1;
   const hx = 0.8 * sz, hy = tall ? by + 0.6 * sz : by + 0.15 * sz;
   if (tall) g.add(mesh(GEO.cyl, m, [0.65 * sz, by + 0.3 * sz, 0], [0.12 * sz, 0.6 * sz, 0.12 * sz], [0, 0, -0.5]));
@@ -490,10 +491,35 @@ function herbFigure(a, x, z, s) {
   const g = group(x, z);
   g.scale.setScalar(s);
   const m = col(hex(a.color));
+  const stem = col(0x3f5f2a);
+  if (a.flower === "mushroom") {
+    g.add(mesh(GEO.cyl, col(0xf0e8d8), [0, 0.35, 0], [0.14, 0.7, 0.14]));
+    g.add(mesh(GEO.dome, m, [0, 0.62, 0], [0.5, 0.36, 0.5]));
+    for (let i = 0; i < 6; i++) g.add(mesh(GEO.ball, col(0xf8f4ea), [Math.cos(i * 1.1) * 0.3, 0.86 - (i % 2) * 0.08, Math.sin(i * 1.1) * 0.3], [0.05, 0.03, 0.05]));
+    return g;
+  }
+  if (a.flower === "acorn") {
+    g.add(mesh(GEO.ball, col(0xb88a3a), [0, 0.35, 0], [0.22, 0.3, 0.22]));
+    g.add(mesh(GEO.dome, col(0x6b4a2b), [0, 0.5, 0], [0.25, 0.16, 0.25]));
+    g.add(mesh(GEO.cyl, col(0x6b4a2b), [0, 0.72, 0], [0.03, 0.15, 0.03]));
+    g.add(mesh(GEO.ball, MAT.leaf, [0.35, 0.55, -0.1], [0.4, 0.06, 0.2], [0, 0.5, 0.4]));
+    return g;
+  }
+  if (a.flower === "bee") {
+    g.add(mesh(GEO.ball, m, [0, 0.5, 0], [0.42, 0.26, 0.26]));
+    for (const bx of [-0.15, 0.12]) g.add(mesh(GEO.cyl, MAT.dark, [bx, 0.5, 0], [0.27, 0.07, 0.27], [0, 0, Math.PI / 2]));
+    g.add(mesh(GEO.ball, MAT.dark, [0.42, 0.52, 0], [0.13, 0.13, 0.13]));
+    for (const side of [-1, 1]) g.add(mesh(GEO.ball, col(0xeef4fa), [-0.05, 0.78, side * 0.18], [0.24, 0.04, 0.13], [side * 0.5, 0, 0]));
+    return g;
+  }
   for (let i = 0; i < 5; i++) {
     const px = Math.cos(i * 1.3) * 0.4, pz = Math.sin(i * 1.3) * 0.4, h = a.tall ? 0.8 : 0.45;
-    g.add(mesh(GEO.cyl, col(0x3f5f2a), [px, h / 2, pz], [0.025, h, 0.025]));
-    g.add(mesh(a.flower === "mushroom" ? GEO.dome : GEO.ball, m, [px, h, pz], [0.1, a.flower === "bell" ? 0.14 : 0.1, 0.1]));
+    g.add(mesh(GEO.cyl, stem, [px, h / 2, pz], [0.025, h, 0.025]));
+    g.add(mesh(GEO.ball, MAT.leaf, [px + 0.08, h * 0.3, pz], [0.1, 0.03, 0.06]));
+    if (a.flower === "fern") for (let j = 0; j < 3; j++) g.add(mesh(GEO.ball, m, [px + (j % 2 ? 0.08 : -0.08), h * (0.5 + j * 0.2), pz], [0.09, 0.03, 0.06]));
+    else if (a.flower === "catkin") g.add(mesh(GEO.cyl, col(0xd8c050), [px + 0.06, h - 0.1, pz], [0.035, 0.22, 0.035]));
+    else if (a.flower === "cluster") for (let j = 0; j < 3; j++) g.add(mesh(GEO.ball, m, [px + (j - 1) * 0.05, h + (j % 2) * 0.04, pz], [0.05, 0.05, 0.05]));
+    else g.add(mesh(GEO.ball, m, [px, h, pz], [0.1, a.flower === "bell" ? 0.14 : 0.1, 0.1]));
   }
   return g;
 }
@@ -562,7 +588,7 @@ function skyDir(pos) {
 
 const POST_VERT = `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`;
 const POST_FRAG = `
-  uniform sampler2D tScene; uniform vec2 res; uniform float levels; varying vec2 vUv;
+  uniform sampler2D tScene; uniform vec2 res; uniform float levels; uniform float vignette; varying vec2 vUv;
   float bayer(vec2 p) {
     int x = int(mod(p.x, 4.0)), y = int(mod(p.y, 4.0)), i = x + y * 4;
     int m[16] = int[16](0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5);
@@ -575,10 +601,98 @@ const POST_FRAG = `
     v = mix(vec3(dot(v, vec3(.299, .587, .114))), v, 1.2);
     v = pow(v, vec3(0.88)); // lift the shadows a little, as CRTs did
     v = clamp((v - 0.5) * 1.12 + 0.5, 0.0, 1.0);
-    v *= 1.0 - 0.55 * pow(length(vUv - 0.5) * 1.35, 2.4); // the vignette of a torch-lit screen
+    v *= 1.0 - vignette * pow(length(vUv - 0.5) * 1.35, 2.4); // the vignette of a torch-lit screen
     v = floor(v * (levels - 1.0) + 0.5 + bayer(px) * 0.55) / (levels - 1.0);
-    gl_FragColor = vec4(v, 1.0);
+    gl_FragColor = vec4(v, c.a < 0.5 ? 0.0 : 1.0); // sprites keep hard-edged transparency
   }`;
+
+function postMaterial(vignette) {
+  return new THREE.ShaderMaterial({
+    uniforms: { tScene: { value: null }, res: { value: new THREE.Vector2(1, 1) }, levels: { value: LEVELS }, vignette: { value: vignette } },
+    vertexShader: POST_VERT, fragmentShader: POST_FRAG, depthTest: false, transparent: true,
+  });
+}
+
+// ---- Sprites: the Bestiary and the store, pre-rendered from the same models -------------------------------------
+
+let kit = null;
+const sprites = new Map();
+
+/** Things that are not Bestiary entries but need a picture: what the store holds. */
+const GOODS = {
+  timber: () => { const g = new THREE.Group(); for (const [y, z] of [[0.25, -0.28], [0.25, 0.28], [0.7, 0]]) g.add(mesh(GEO.cyl, MAT.bark, [0, y, z], [0.24, 1.4, 0.24], [0, 0, Math.PI / 2])); return g; },
+  poles: () => { const g = new THREE.Group(); for (let i = 0; i < 5; i++) g.add(mesh(GEO.cyl, col(0x8a6a3a), [(i - 2) * 0.12, 0.9, 0], [0.05, 1.8, 0.05], [0, 0, (i - 2) * 0.06])); g.add(mesh(GEO.cyl, col(0xc8a060), [0, 0.8, 0], [0.34, 0.1, 0.12])); return g; },
+  berries: () => { const g = new THREE.Group(); for (let i = 0; i < 9; i++) g.add(mesh(GEO.ball, col(0x3a1a4a), [Math.cos(i * 2.4) * 0.25 * (i % 3), 0.2 + Math.floor(i / 3) * 0.17, Math.sin(i * 2.4) * 0.25 * (i % 3)], [0.15, 0.15, 0.15])); return g; },
+  honey: () => { const g = new THREE.Group(); g.add(mesh(GEO.cyl, col(0x9a6a3a), [0, 0.35, 0], [0.38, 0.7, 0.38])); g.add(mesh(GEO.dome, col(0xe0a020), [0, 0.7, 0], [0.4, 0.18, 0.4])); g.add(mesh(GEO.cyl, col(0xe0a020), [0.36, 0.55, 0], [0.06, 0.4, 0.06])); return g; },
+  mushrooms: () => herbFigure({ color: "#c23a22", flower: "mushroom" }, 0, 0, 1),
+  moonwort: () => herbFigure({ color: "#c8d0e8", flower: "fern" }, 0, 0, 1.4),
+  blessings: () => { const g = new THREE.Group(); g.add(mesh(GEO.octa, MAT.gold, [0, 0.6, 0], [0.4, 0.6, 0.4])); return g; },
+};
+
+/** A pre-rendered picture of a Bestiary entry (by id) or a store good, as a PNG data URL. Cached. */
+export function sprite(id, { px = 48, silhouette = false } = {}) {
+  const key = `${id}:${px}:${silhouette}`;
+  if (sprites.has(key)) return sprites.get(key);
+  initShared();
+  if (!kit) {
+    const canvas = document.createElement("canvas");
+    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false, preserveDrawingBuffer: true });
+    renderer.setPixelRatio(1);
+    renderer.setClearColor(0x000000, 0);
+    const scene = new THREE.Scene();
+    const keyLight = new THREE.DirectionalLight(0xfff0d8, 3.2);
+    keyLight.position.set(-3, 6, 4);
+    const rim = new THREE.DirectionalLight(0x9fb4ff, 1.4);
+    rim.position.set(4, 2, -4);
+    scene.add(keyLight, rim, new THREE.HemisphereLight(0xdde6ff, 0x3a3020, 1));
+    const post = postMaterial(0);
+    const postScene = new THREE.Scene();
+    const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), post);
+    quad.frustumCulled = false;
+    postScene.add(quad);
+    kit = { canvas, renderer, scene, post, postScene, postCam: new THREE.Camera(), camera: new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 200), rt: null,
+      shadow: new THREE.MeshBasicMaterial({ color: 0x14100c }) };
+  }
+  const { renderer, scene, camera, post } = kit;
+  const e = ENTRY[id];
+  const obj = e ? entryFigure(e, 0, 0, 1, true, 0) : GOODS[id]();
+  if (e?.art.shape === "light") obj.position.y = 0;
+  scene.add(obj);
+  scene.overrideMaterial = silhouette ? kit.shadow : null;
+  // Frame the model from a three-quarter view, to its own extent.
+  const box = new THREE.Box3().setFromObject(obj);
+  const center = box.getCenter(new THREE.Vector3());
+  camera.position.copy(center).add(new THREE.Vector3(1.1, 0.75, 1.5).normalize().multiplyScalar(60));
+  camera.lookAt(center);
+  camera.updateMatrixWorld();
+  const view = camera.matrixWorldInverse;
+  const c = center.clone().applyMatrix4(view);
+  let half = 0.1;
+  for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) {
+    const v = new THREE.Vector3(x, y, z).applyMatrix4(view);
+    half = Math.max(half, Math.abs(v.x - c.x), Math.abs(v.y - c.y));
+  }
+  half *= 1.08;
+  Object.assign(camera, { left: -half, right: half, top: half, bottom: -half });
+  camera.updateProjectionMatrix();
+  renderer.setSize(px, px, false);
+  if (!kit.rt || kit.rt.width !== px) {
+    kit.rt?.dispose();
+    kit.rt = new THREE.WebGLRenderTarget(px, px, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter });
+  }
+  post.uniforms.tScene.value = kit.rt.texture;
+  post.uniforms.res.value.set(px, px);
+  renderer.setRenderTarget(kit.rt);
+  renderer.clear();
+  renderer.render(scene, camera);
+  renderer.setRenderTarget(null);
+  renderer.clear();
+  renderer.render(kit.postScene, kit.postCam);
+  const url = kit.canvas.toDataURL("image/png");
+  scene.remove(obj);
+  sprites.set(key, url);
+  return url;
+}
 
 export function createIso(canvas) {
   initShared();
@@ -608,7 +722,7 @@ export function createIso(canvas) {
   const view = { target: new THREE.Vector3(-1, 2.5, -1), zoom: 9.5, goalTarget: new THREE.Vector3(-1, 2.5, -1), goalZoom: 9.5 };
 
   let rt = null;
-  const post = new THREE.ShaderMaterial({ uniforms: { tScene: { value: null }, res: { value: new THREE.Vector2(1, 1) }, levels: { value: LEVELS } }, vertexShader: POST_VERT, fragmentShader: POST_FRAG, depthTest: false });
+  const post = postMaterial(0.55);
   const postScene = new THREE.Scene();
   const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), post);
   quad.frustumCulled = false;

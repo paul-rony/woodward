@@ -174,6 +174,11 @@
   .styles { display: flex; justify-content: center; gap: 4px; margin-top: 4px; }
   .styles button { background: none; border: 1px solid transparent; padding: 1px 10px; font-size: 14px; color: var(--ink-soft); font-style: italic; }
   .styles button[aria-pressed="true"] { border-color: var(--ink-soft); color: var(--ink); }
+  img.sprite { display: block; width: 76px; height: 76px; margin: 0 auto 2px; image-rendering: pixelated; }
+  img.sprite.big { width: 240px; height: 240px; margin: 4px auto 8px; }
+  img.sprite.icon { width: 30px; height: 30px; margin: 0; flex: none; }
+  body.style-iso .roundel img.sprite { background: radial-gradient(circle, #3a332c 0%, #1c1815 70%); border-radius: 50%; border: 2px solid #6b5427; padding: 6px; box-sizing: border-box; }
+  body.style-iso img.sprite.big { background: radial-gradient(circle, #3a332c 0%, #14110e 75%); border: 3px solid #0c0a08; outline: 2px solid #8a6a2a; outline-offset: -7px; padding: 14px; box-sizing: border-box; }
   #isoCanvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; cursor: pointer; }
   body.style-iso {
     --ink: #e8d5a6; --ink-soft: #a8946a; --rubric: #e0a83a; --lapis: #8fb0ff; --parchment: #2a2622; --parchment-edge: #14110e;
@@ -328,7 +333,19 @@ const RES = {
   blessings: { name: "Blessings", entry: null },
 };
 
-function icon(entryId, size = 30, cls = "") {
+/** A pre-rendered picture, when the isometric style is on and its renderer has loaded; null otherwise. */
+function spriteImg(id, { px, silhouette = false, cls = "" }) {
+  if (style !== "iso" || !sprite) return null;
+  try {
+    return `<img class="sprite ${cls}" src="${sprite(id, { px, silhouette })}" alt="">`;
+  } catch {
+    return null;
+  }
+}
+
+function icon(entryId, size = 30, cls = "", good = null) {
+  const img = good && spriteImg(good, { px: 24, cls: "icon" });
+  if (img) return img;
   const inner = entryId
     ? drawEntry(ENTRY[entryId], 0, 0, 1, { key: `icon-${entryId}` })
     : star(0, -14, 12, PIGMENT.gold, { points: 6 });
@@ -337,6 +354,8 @@ function icon(entryId, size = 30, cls = "") {
 
 /** An entry drawn in a roundel, framed to fit whatever shape it is. */
 function roundel(e, seen, big = false) {
+  const img = spriteImg(e.id, { px: big ? 96 : 44, silhouette: !seen, cls: big ? "big" : "" });
+  if (img) return img;
   const box = { quad: "-60 -80 120 92", bird: "-50 -62 100 72", folk: "-50 -66 100 74", herb: "-30 -42 60 50", light: "-60 -60 120 80" }[e.art.shape];
   return `<svg viewBox="${box}" class="fit${big ? " big" : ""}${seen ? "" : " unseen-art"}" aria-hidden="true"><defs>${DEFS}</defs><g>${drawEntry(e, 0, 0, 1, { key: `book-${e.id}`, night: e.art.shape === "light" })}</g></svg>`;
 }
@@ -354,13 +373,19 @@ function fitDrawings(root) {
 // ---- The left page ---------------------------------------------------------------------------------------------
 
 // Two ways to draw the wood: the hand-inked codex, or a 1990s pre-rendered isometric world in a stone frame.
-let style = store.get("woodward.style") === "iso" ? "iso" : "ink";
+let style = store.get("woodward.style") === "ink" ? "ink" : "iso";
 let iso = null;
 let isoLoading = null;
+let sprite = null; // the iso module's pre-rendered pictures, once it has loaded
 
 async function loadIso() {
   if (iso) return iso;
-  isoLoading ??= import("./iso.mjs").then(({ createIso }) => (iso = createIso($("isoCanvas"))));
+  isoLoading ??= import("./iso.mjs").then((m) => {
+    iso = m.createIso($("isoCanvas"));
+    sprite = m.sprite;
+    renderPage();
+    return iso;
+  });
   return isoLoading;
 }
 
@@ -376,10 +401,16 @@ function setStyle(s) {
   renderPage();
 }
 for (const b of document.querySelectorAll("[data-style]")) b.addEventListener("click", () => setStyle(b.dataset.style));
+setStyle(style); // dress the page before the wood arrives
 
 function renderScene() {
   if (!snap) return;
-  if (style === "iso") loadIso().then((i) => style === "iso" && i.update(snap, view)).catch((err) => note(`The isometric view would not start: ${esc(err.message)}`));
+  if (style === "iso") loadIso().then((i) => style === "iso" && i.update(snap, view)).catch((err) => {
+    // No WebGL here (or it failed): fall back to the ink codex rather than a black picture.
+    isoLoading = null;
+    setStyle("ink");
+    note(`The isometric view would not start here, so the wood is drawn in ink. <i>${esc(err.message)}</i>`, 7000);
+  });
   else $("scene").innerHTML = view === "tower" ? towerScene(snap) : woodScene(snap, now());
   $("sceneTitle").textContent = view === "tower" ? "From the Tower" : "Of the Wood";
   $("towerBtn").textContent = view === "tower" ? "Go down" : "Climb the tower";
@@ -538,7 +569,7 @@ function hourPage() {
   let out = `<h2>The Hour</h2><p class="dropcap">It is ${c.office}, ${hourWords}, on ${medievalDate(snap.now)}. ${sunLine} ${moonLine} ${danger}</p>`;
   if (letter) out += letter;
 
-  out += `<h2>The Store</h2><div class="store">${Object.entries(RES).map(([r, d]) => `<div class="good">${icon(d.entry)}<span><b>${snap.inv[r] ?? 0}</b> ${d.name}</span></div>`).join("")}</div>`;
+  out += `<h2>The Store</h2><div class="store">${Object.entries(RES).map(([r, d]) => `<div class="good">${icon(d.entry, 30, "", r)}<span><b>${snap.inv[r] ?? 0}</b> ${d.name}</span></div>`).join("")}</div>`;
 
   out += `<h2>In the Wood</h2><div class="rows">`;
   for (const [id, n] of Object.entries(snap.nodes)) {
@@ -689,7 +720,6 @@ function onSnapshot(s) {
   snap = s;
   skew = s.now - Date.now();
   if (first) {
-    if (style === "iso") setStyle("iso");
     buildLetter();
     setTab(tab);
     if (!helloSent && s.location.guessed && !s.location.tz) {
