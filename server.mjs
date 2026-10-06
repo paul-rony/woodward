@@ -59,8 +59,8 @@ setInterval(() => {
 const TYPES = { ".html": "text/html; charset=utf-8", ".mjs": "text/javascript; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".svg": "image/svg+xml" };
 
 function sendFile(res, rel) {
-  // Only plain names inside public/, never a path that climbs out.
-  if (!/^[a-z0-9-]+\.(html|mjs|js|css|svg)$/.test(rel)) return send(res, 404, { error: "Not found." });
+  // Only plain names inside public/ or public/vendor/, never a path that climbs out.
+  if (!/^(vendor\/)?[a-z0-9][a-z0-9.-]*\.(html|mjs|js|css|svg)$/.test(rel)) return send(res, 404, { error: "Not found." });
   try {
     const body = readFileSync(join(publicDir, rel));
     res.writeHead(200, { "content-type": TYPES[extname(rel)], "cache-control": "no-cache" }).end(body);
