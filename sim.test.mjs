@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { MAX_STEP_MS, poachers, build, canonicalHour, environment, gather, look, moonPhase, newState, nextSunCrossing, sunPosition, tick } from "./sim.mjs";
+import { POS3, HOME, WAYPOINTS } from "./public/world.mjs";
+import { MAX_STEP_MS, poachers, walk, arrive, recall, equip, craft, migrate, currentPos, build, canonicalHour, environment, gather, look, moonPhase, newState, nextSunCrossing, sunPosition, tick } from "./sim.mjs";
 
 const LONDON = { lat: 51.5, lon: -0.1, tz: "Europe/London", guessed: false };
 const at = (iso) => Date.parse(iso);
@@ -41,17 +42,80 @@ test("hazel regrows only in sunlight", () => {
   assert.ok(s.nodes.hazel1.growth > 0);
 });
 
-test("going out at night can go wrong; by day it cannot", () => {
+test("going out at night needs a light, and can still go wrong; by day it cannot", () => {
+  const t = at("2026-06-22T00:00Z");
   const night = wood("2026-06-22T00:00Z");
-  assert.ok(environment(night, at("2026-06-22T00:00Z")).risk > 0);
-  const r = gather(night, "hazel1", at("2026-06-22T00:00Z"), dice(0, 0.9));
+  night.you.pos = [...POS3.hazel1];
+  assert.equal(gather(night, "hazel1", t).outcome, "dark");
+  assert.ok(equip(night, "torch", "handL").ok);
+  assert.ok(environment(night, t).risk > 0);
+  const r = gather(night, "hazel1", t, dice(0, 0.9));
   assert.equal(r.outcome, "hurt");
+  assert.deepEqual(night.you.pos, HOME);
   assert.equal(gather(night, "hazel2", at("2026-06-22T00:30Z")).outcome, "resting");
 
   const day = wood("2026-06-22T12:00Z");
+  day.you.pos = [...POS3.hazel1];
   assert.equal(gather(day, "hazel1", at("2026-06-22T12:00Z"), () => 0).outcome, "gathered");
   assert.equal(day.inv.poles, 3);
   assert.ok(day.book.hazel, "gathering records the herbal page");
+});
+
+test("cutting wood needs the hatchet in hand", () => {
+  const s = wood("2026-06-22T12:00Z");
+  s.you.pos = [...POS3.hazel1];
+  equip(s, "hatchet", null);
+  assert.equal(gather(s, "hazel1", at("2026-06-22T12:00Z")).outcome, "tool");
+  assert.equal(gather(s, "bramble", at("2026-06-22T12:00Z")).outcome, "walking", "berries need no tool, just a walk");
+});
+
+test("gathering far away walks there and gathers on arrival", () => {
+  const t = at("2026-06-22T12:00Z");
+  const s = wood("2026-06-22T12:00Z");
+  const r = gather(s, "bramble", t);
+  assert.equal(r.outcome, "walking");
+  assert.equal(arrive(s, r.arriveAt, () => 1).outcome, "gathered");
+  assert.equal(s.inv.berries, 4);
+});
+
+test("leaving the clearing locks the tower until a waypoint takes you back", () => {
+  const t = at("2026-06-22T12:00Z");
+  const s = wood("2026-06-22T12:00Z");
+  const ford = WAYPOINTS.find((w) => w.id === "ford");
+  const r = walk(s, ford.at, t);
+  arrive(s, r.arriveAt, () => 1);
+  assert.equal(s.you.exploring, true);
+  assert.ok(s.you.waypoints.includes("ford"));
+  assert.equal(look(s, 1, r.arriveAt).ok, false, "no tower view while exploring");
+  assert.ok(recall(s, r.arriveAt + 1).ok);
+  assert.deepEqual(s.you.pos, HOME);
+  assert.equal(s.you.exploring, false);
+});
+
+test("walking is interpolated, and gear changes the pace", () => {
+  const t = at("2026-06-22T12:00Z");
+  const s = wood("2026-06-22T12:00Z");
+  const slow = walk(s, [HOME[0] + 10, HOME[1]], t).arriveAt - t;
+  assert.ok(Math.abs(currentPos(s, t + slow / 2)[0] - (HOME[0] + 5)) < 0.01);
+  s.you.items.push("staff");
+  equip(s, "staff", "handL");
+  const s2 = wood("2026-06-22T12:00Z");
+  s2.you = s.you;
+  s2.you.walk = null;
+  s2.you.pos = [...HOME];
+  const fast = walk(s2, [HOME[0] + 10, HOME[1]], t).arriveAt - t;
+  assert.ok(fast < slow);
+});
+
+test("gear is crafted from the store, and older saves gain a pack", () => {
+  const s = wood("2026-06-22T12:00Z");
+  Object.assign(s.inv, { honey: 2, timber: 1 });
+  assert.ok(craft(s, "lantern", 0).ok);
+  assert.ok(s.you.items.includes("lantern"));
+  assert.equal(equip(s, "lantern", "head").ok, false);
+  const old = { you: { restUntil: null } };
+  migrate(old);
+  assert.ok(old.you.items.includes("torch"));
 });
 
 test("a gap while the computer was off is logged and not caught up", () => {

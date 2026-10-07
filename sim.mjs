@@ -4,6 +4,7 @@
 // skipped, never caught up. That is the point of the game: a computer that never sleeps keeps the wood alive.
 
 import { ENTRIES, ENTRY, ZONES, shiftMonth, timeBucket } from "./public/bestiary.mjs";
+import { HOME, ITEMS, POS3, STARTING_GEAR, WAYPOINTS, WORLD_RADIUS, dist, isHome, zonePoint } from "./public/world.mjs";
 
 export const TICK_MS = 20_000;
 export const MAX_STEP_MS = 5 * 60_000;
@@ -126,14 +127,33 @@ const isDark = (env) => env.sun.elevation < -12;
 const isNight = (env) => env.sun.elevation < -6;
 const isTwilight = (env) => env.sun.elevation < 0 && env.sun.elevation > -12;
 
-/** Chance that going out into the wood right now ends badly. Zero by day; a brazier, the hound and moonlight help. */
-export function nightRisk(state, env) {
+/** Chance that going out right now ends badly, with what you carry. Zero by day. In the clearing the brazier and
+ *  Bran's kennel help; out in the wild only a light, Bran at your side (the horn) and a cloak do. Moonlight helps both. */
+export function riskFor(state, env, wild = false) {
   if (!isNight(env)) return 0;
-  let risk = 0.4;
-  if (state.built.brazier) risk *= 0.5;
-  if (state.built.kennel) risk *= 0.5;
+  let risk = wild ? 0.5 : 0.4;
+  if (!wild && state.built.brazier) risk *= 0.5;
+  if (wild ? houndWithYou(state) : state.built.kennel) risk *= 0.5;
+  const light = lightIn(state);
+  if (light) risk *= ITEMS[light].light;
+  for (const id of Object.values(state.you?.equip ?? {})) if (ITEMS[id]?.guard) risk *= ITEMS[id].guard;
   if (env.moon.elevation > 0) risk *= 1 - 0.4 * env.moon.illumination;
   return risk;
+}
+
+/** The danger of the clearing after dark, as the Hour page reports it. */
+export function nightRisk(state, env) {
+  return riskFor(state, env, false);
+}
+
+/** The light in either hand, if any. */
+export function lightIn(state) {
+  const eq = state.you?.equip ?? {};
+  return [eq.handL, eq.handR].find((id) => ITEMS[id]?.light) ?? null;
+}
+
+export function houndWithYou(state) {
+  return !!state.built.kennel && Object.values(state.you?.equip ?? {}).some((id) => ITEMS[id]?.hound);
 }
 
 // ---- What grows ------------------------------------------------------------------------------------------------
@@ -193,7 +213,7 @@ export function newState(now) {
     inv: Object.fromEntries(RESOURCES.map((r) => [r, 0])),
     nodes,
     built: {},
-    you: { restUntil: null },
+    you: freshYou(),
     wat: { state: "idle", at: "cot", target: null, arriveAt: null },
     sightings: [],
     nextSightingId: 1,
@@ -257,39 +277,199 @@ function take(state, id, now, by) {
   return y;
 }
 
-/** You go down into the wood to gather. By night the dice decide whether the wolves let you. */
+const REACH = 2.6;
+const SIGHT = 7;
+const WOOD = new Set(["oak", "hazel"]);
+
+/** You go to gather: walk there first if need be, and the deed is done on arrival. */
 export function gather(state, id, now, rng = Math.random) {
-  if (state.you.restUntil && now < state.you.restUntil) {
-    return { ok: false, outcome: "resting", message: "You are still nursing your ankle by the fire." };
-  }
+  const refused = cannotAct(state, now);
+  if (refused) return refused;
+  if (!isReady(state, id)) return { ok: false, outcome: "nothing", message: "Nothing to gather there yet." };
+  if (WOOD.has(NODES[id].kind) && !inHands(state, "hatchet")) return { ok: false, outcome: "tool", message: "You need the hatchet in hand to cut wood." };
+  if (dist(currentPos(state, now), POS3[id]) > REACH) return walk(state, approach(currentPos(state, now), POS3[id], REACH - 0.6), now, { gather: id });
+  return gatherHere(state, id, now, rng);
+}
+
+function gatherHere(state, id, now, rng) {
   if (!isReady(state, id)) return { ok: false, outcome: "nothing", message: "Nothing to gather there yet." };
   const env = environment(state, now);
-  if (rng() < env.risk) {
-    const def = NODES[id];
-    if (rng() < 0.5) {
-      log(state, now, `Wolves howled close by the ${def.name}. You dropped everything and ran for the lodge.`, "danger");
-      return { ok: false, outcome: "fled", message: "Wolves! You dropped everything and ran." };
-    }
-    state.you.restUntil = now + REST_MS;
-    log(state, now, `You stumbled on a root in the dark near the ${def.name} and twisted your ankle. You must rest for two hours.`, "danger");
-    return { ok: false, outcome: "hurt", message: "You fell in the dark and must rest for two hours.", restUntil: state.you.restUntil };
-  }
+  const mishap = danger(state, now, riskFor(state, env, !isHome(state.you.pos)), `near the ${NODES[id].name}`, rng);
+  if (mishap) return mishap;
   const y = take(state, id, now, "you");
-  if (isNight(env)) log(state, now, `You crept out by night and brought back ${yieldText(y)} from the ${NODES[id].name}.`, "you", { gain: y });
+  log(state, now, `${isNight(env) ? "By the light in your hand you" : "You"} gathered ${yieldText(y)} from the ${NODES[id].name}.`, "you", { gain: y });
   return { ok: true, outcome: "gathered", yield: y };
 }
 
-/** Looking at a sighting from the tower is always safe. It records the entry and, for the white hart, blesses the wood. */
-export function look(state, sightingId, now, by = "you") {
+/** Rolls the night's dice. On a bad roll you end up home: having run for it, or hurt. */
+function danger(state, now, risk, where, rng) {
+  if (!(rng() < risk)) return null;
+  Object.assign(state.you, { pos: [...HOME], walk: null, exploring: false });
+  if (rng() < 0.5) {
+    log(state, now, `Wolves came out of the dark ${where}. You dropped everything and ran for the lodge.`, "danger");
+    return { ok: false, outcome: "fled", message: "Wolves! You dropped everything and ran home." };
+  }
+  state.you.restUntil = now + REST_MS;
+  log(state, now, `You stumbled on a root in the dark ${where} and twisted your ankle. Wat helped you home. You must rest for two hours.`, "danger");
+  return { ok: false, outcome: "hurt", message: "You fell in the dark and must rest for two hours.", restUntil: state.you.restUntil };
+}
+
+function cannotAct(state, now) {
+  if (state.you.restUntil && now < state.you.restUntil) return { ok: false, outcome: "resting", message: "You are still nursing your ankle by the fire." };
+  const env = environment(state, now);
+  if (isNight(env) && !lightIn(state)) return { ok: false, outcome: "dark", message: "It is pitch dark outside. Take a light in your hand first." };
+  return null;
+}
+
+function inHands(state, item) {
+  return state.you.equip.handL === item || state.you.equip.handR === item;
+}
+
+/** A point `gap` short of `to`, on the way from `from`. */
+function approach(from, to, gap) {
+  const d = dist(from, to);
+  if (d <= gap) return [...from];
+  const k = (d - gap) / d;
+  return [from[0] + (to[0] - from[0]) * k, from[1] + (to[1] - from[1]) * k];
+}
+
+// ---- Walking the land ------------------------------------------------------------------------------------------
+
+export function freshYou() {
+  return { restUntil: null, pos: [...HOME], walk: null, exploring: false, waypoints: [], items: [...STARTING_GEAR.items], equip: { ...STARTING_GEAR.equip } };
+}
+
+/** Fills in what an older save lacks. */
+export function migrate(state) {
+  state.you = { ...freshYou(), ...state.you };
+  return state;
+}
+
+export function speed(state) {
+  let v = 2.6;
+  for (const id of Object.values(state.you.equip)) if (ITEMS[id]?.speed) v *= ITEMS[id].speed;
+  return v;
+}
+
+export function currentPos(state, now) {
+  const w = state.you.walk;
+  if (!w) return state.you.pos;
+  const t = Math.max(0, Math.min(1, (now - w.departedAt) / (w.arriveAt - w.departedAt)));
+  return [w.from[0] + (w.to[0] - w.from[0]) * t, w.from[1] + (w.to[1] - w.from[1]) * t];
+}
+
+/** Sets off towards `to`. `then` is what to do on arrival: { gather: nodeId } or { look: sightingId }. */
+export function walk(state, to, now, then = null) {
+  const refused = cannotAct(state, now);
+  if (refused) return refused;
+  let [x, z] = to.map(Number);
+  if (!Number.isFinite(x) || !Number.isFinite(z)) return { ok: false, message: "That is nowhere." };
+  const r = Math.hypot(x, z);
+  if (r > WORLD_RADIUS) [x, z] = [(x / r) * WORLD_RADIUS, (z / r) * WORLD_RADIUS];
+  const from = currentPos(state, now);
+  const ms = Math.max(300, (dist(from, [x, z]) / speed(state)) * 1000);
+  state.you.pos = from;
+  state.you.walk = { from, to: [x, z], departedAt: now, arriveAt: now + ms, then };
+  return { ok: true, outcome: "walking", arriveAt: now + ms };
+}
+
+/** Finishes a walk whose time has come: where you are now, what you found, and whatever you set out to do. */
+export function arrive(state, now, rng = Math.random) {
+  const w = state.you.walk;
+  if (!w || now < w.arriveAt) return null;
+  state.you.pos = [...w.to];
+  state.you.walk = null;
+  const env = environment(state, now);
+  const wild = !isHome(w.to) || !isHome(w.from);
+  if (wild && isNight(env)) {
+    const mishap = danger(state, now, riskFor(state, env, true) * Math.min(1, dist(w.from, w.to) / 25), "out in the dark", rng);
+    if (mishap) return mishap;
+  }
+  const home = isHome(state.you.pos);
+  if (!home && !state.you.exploring) {
+    state.you.exploring = true;
+    log(state, now, "You left the clearing. The tower is out of reach until you find a waypoint, or walk home.", "you");
+  } else if (home && state.you.exploring) {
+    state.you.exploring = false;
+    log(state, now, "You are back in the clearing, under the tower.", "you");
+  }
+  for (const wp of WAYPOINTS) {
+    if (dist(state.you.pos, wp.at) <= REACH && !state.you.waypoints.includes(wp.id)) {
+      state.you.waypoints.push(wp.id);
+      log(state, now, `You found the ${wp.name}. Laying a hand on any waypoint you have found takes you back to the tower.`, "book");
+    }
+  }
+  if (w.then?.gather) return gatherHere(state, w.then.gather, now, rng);
+  if (w.then?.look) return lookHere(state, w.then.look, now);
+  return { ok: true, outcome: "arrived" };
+}
+
+/** At a waypoint you have found: back to the foot of the tower. */
+export function recall(state, now) {
+  if (state.you.walk) return { ok: false, message: "Stop walking first." };
+  const wp = WAYPOINTS.find((x) => state.you.waypoints.includes(x.id) && dist(state.you.pos, x.at) <= REACH);
+  if (!wp) return { ok: false, message: "You must stand at a waypoint you have found." };
+  Object.assign(state.you, { pos: [...HOME], exploring: false });
+  log(state, now, `You laid your hand on the ${wp.name}, and stood at the foot of the tower.`, "you");
+  return { ok: true };
+}
+
+export function equip(state, item, slot) {
+  const you = state.you;
+  if (!you.items.includes(item)) return { ok: false, message: "You do not have that." };
+  for (const [k, v] of Object.entries(you.equip)) if (v === item) delete you.equip[k];
+  if (slot == null) return { ok: true };
+  if (!ITEMS[item].fits.includes(slot)) return { ok: false, message: `The ${ITEMS[item].name} does not go there.` };
+  you.equip[slot] = item;
+  return { ok: true };
+}
+
+export const GEAR = [
+  { id: "lantern", cost: { honey: 2, timber: 1 } },
+  { id: "horn", cost: { timber: 1, poles: 2, honey: 1 } },
+  { id: "staff", cost: { poles: 2 } },
+  { id: "cloak", cost: { berries: 8, honey: 2 } },
+];
+
+export function craft(state, id, now) {
+  const g = GEAR.find((x) => x.id === id);
+  if (!g) return { ok: false, error: "Unknown gear." };
+  if (state.you.items.includes(id)) return { ok: false, error: "You have one already." };
+  if (!canAfford(state, g.cost)) return { ok: false, error: "Not enough in the store." };
+  for (const [r, n] of Object.entries(g.cost)) state.inv[r] -= n;
+  state.you.items.push(id);
+  log(state, now, `You made a ${ITEMS[id].name}. It is in your pack.`, "build");
+  return { ok: true };
+}
+
+/** Looking from the tower is always safe, but only from home. On the ground you walk up close first. */
+export function look(state, sightingId, now, by = "you", from = "tower") {
+  if (by === "you" && from === "ground") {
+    const s = state.sightings.find((x) => x.id === sightingId);
+    if (!s || now > s.until) return { ok: false, message: "Whatever it was has gone." };
+    const [x, , z] = zonePoint(s);
+    const here = currentPos(state, now);
+    if (dist(here, [x, z]) > SIGHT) {
+      const refused = cannotAct(state, now);
+      if (refused) return refused;
+      return walk(state, approach(here, [x, z], SIGHT - 1.5), now, { look: sightingId });
+    }
+  } else if (by === "you" && state.you.exploring) {
+    return { ok: false, message: "You are out in the land, far from the tower." };
+  }
+  return lookHere(state, sightingId, now, by);
+}
+
+function lookHere(state, sightingId, now, by = "you") {
   const s = state.sightings.find((x) => x.id === sightingId);
   if (!s || now > s.until) return { ok: false, message: "Whatever it was has gone." };
-  if (s.seenBy?.includes(by)) return { ok: true, isNew: false };
+  if (s.seenBy?.includes(by)) return { ok: true, isNew: false, entry: s.entry };
   s.seenBy = [...(s.seenBy ?? []), by];
   const isNew = record(state, s.entry, now, by);
   const e = ENTRY[s.entry];
   if (e.blessing) {
     state.inv.blessings += 1;
-    log(state, now, by === "wat" ? "Wat saw the white hart from the tower. A blessing on the wood." : "You saw the white hart from the tower. A blessing on the wood.", by === "wat" ? "wat" : "you", { gain: { blessings: 1 } });
+    log(state, now, by === "wat" ? "Wat saw the white hart from the tower. A blessing on the wood." : "You saw the white hart. A blessing on the wood.", by === "wat" ? "wat" : "you", { gain: { blessings: 1 } });
   }
   return { ok: true, isNew, entry: s.entry };
 }
@@ -386,10 +566,12 @@ export function tick(state, now, rng = Math.random) {
     state.stats.awakeSince = now;
     state.stats.watchingNight = false;
     if (state.wat.state === "walking") Object.assign(state.wat, { state: "idle", target: null, arriveAt: null });
+    if (state.you.walk) Object.assign(state.you, { pos: [...state.you.walk.to], walk: null });
   }
   state.lastTick = now;
   const env = environment(state, now);
   const hours = dt / HOUR;
+  arrive(state, now, rng);
 
   if (state.you.restUntil && now >= state.you.restUntil) {
     state.you.restUntil = null;
@@ -447,7 +629,7 @@ export function tick(state, now, rng = Math.random) {
 
   // The night watch: Wat records whatever has been in view for a minute.
   if (watOnWatch(state, env)) {
-    for (const s of state.sightings) if (now - s.appearedAt >= 60_000 && !s.seenBy.includes("wat")) look(state, s.id, now, "wat");
+    for (const s of state.sightings) if (now - s.appearedAt >= 60_000 && !s.seenBy.includes("wat")) lookHere(state, s.id, now, "wat");
   }
 
   // Nights watched: a full stretch of darkness through to sunrise without the computer stopping.
@@ -559,7 +741,11 @@ export function snapshot(state, now, env = environment(state, now)) {
     nodes,
     built: state.built,
     builds: BUILDS.map((b) => ({ ...b, built: !!state.built[b.id], affordable: canAfford(state, b.cost) && (!b.needs || !!state.built[b.needs]) })),
-    you: state.you,
+    you: {
+      ...state.you, pos: currentPos(state, now), light: lightIn(state), hound: houndWithYou(state), speed: speed(state),
+      wildRisk: riskFor(state, env, true), atWaypoint: WAYPOINTS.find((w) => state.you.waypoints.includes(w.id) && !state.you.walk && dist(state.you.pos, w.at) <= REACH)?.id ?? null,
+    },
+    gear: GEAR.map((g) => ({ ...g, owned: state.you.items.includes(g.id), affordable: canAfford(state, g.cost) })),
     wat: { ...state.wat, awake: watAwake(state, env), onWatch: watOnWatch(state, env) },
     sightings: state.sightings.filter((s) => now <= s.until),
     book: state.book,

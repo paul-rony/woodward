@@ -8,7 +8,7 @@
 <link rel="icon" href="icon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=UnifrakturMaguntia&family=Cinzel:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=UnifrakturMaguntia&family=Cinzel:wght@500;700&family=Jacquarda+Bastarda+9&family=Silkscreen&family=VT323&display=swap" rel="stylesheet">
 <style>
   :root {
     --ink: #2a1d12;
@@ -42,7 +42,7 @@
     display: grid;
     grid-template-columns: minmax(0, 1.3fr) 18px minmax(0, 1fr);
     width: min(1440px, 100%);
-    height: min(860px, calc(100vh - 36px));
+    height: min(980px, calc(100vh - 36px));
     filter: drop-shadow(0 18px 30px rgba(0, 0, 0, .55));
   }
   .page {
@@ -219,6 +219,62 @@
   body.style-iso .link { color: #9ab8ff; }
   body.style-iso .styles button[aria-pressed="true"] { border-color: #8a6a2a; color: #e9b949; }
 
+
+  /* ---- The console under the picture: map, whereabouts, the paper doll; the pack below ---- */
+  .console { display: grid; grid-template-columns: 168px minmax(0, 1fr) auto; gap: 12px; align-items: end; margin-top: 10px; }
+  #minimap { width: 168px; height: 168px; display: block; cursor: crosshair; image-rendering: pixelated; border: 2px solid var(--ink); background: #1a2414; }
+  .console-mid { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 6px; min-width: 0; text-align: center; }
+  .whereabouts { font-size: 15px; color: var(--ink-soft); min-height: 1.2em; }
+  .whereabouts .seal { margin-top: 4px; }
+  .doll { display: grid; grid-template-columns: repeat(3, 38px); grid-template-rows: 18px repeat(5, 34px); gap: 3px; }
+  .doll .name { grid-column: 1 / 4; display: flex; align-items: center; gap: 6px; font-size: 12px; letter-spacing: .08em; color: var(--rubric); white-space: nowrap; }
+  .doll .bar { flex: 1; height: 6px; background: #3a1010; border: 1px solid #000; }
+  .doll .bar i { display: block; height: 100%; background: #e04a3a; }
+  .slot, .tile {
+    position: relative; width: 38px; height: 34px; padding: 0; border: 2px solid var(--ink-soft); background: rgba(0,0,0,.08);
+    display: grid; place-items: center; font-size: 9px; line-height: 1; text-align: center; color: var(--ink-soft); overflow: hidden;
+  }
+  .slot.empty::after { content: attr(data-label); opacity: .55; }
+  .slot img, .tile img { width: 30px; height: 30px; image-rendering: pixelated; pointer-events: none; }
+  .slot.over, .tile.picked, .pack.over { outline: 2px solid var(--rubric); outline-offset: -2px; }
+  .slot.light { box-shadow: inset 0 0 10px rgba(255, 190, 90, .6); }
+  .pack { display: flex; flex-wrap: wrap; gap: 4px; min-height: 42px; margin-top: 8px; padding: 4px; border: 2px dashed var(--ink-soft); align-items: center; }
+  .pack:empty::before { content: "Your pack is empty. Drag gear here to take it off."; font-size: 13px; color: var(--ink-soft); padding: 0 6px; }
+  .tile { cursor: grab; }
+
+  body.style-iso #minimap { border: 3px solid #0c0a08; outline: 2px solid #6b5427; outline-offset: -5px; }
+  body.style-iso .slot, body.style-iso .tile {
+    background: linear-gradient(180deg, #2a2622, #1a1714); border: 2px solid #0c0a08;
+    box-shadow: inset 1px 1px 0 #5a5248, inset -1px -1px 0 #0c0a08; color: #6a604f;
+  }
+  body.style-iso .pack { border: 2px solid #0c0a08; background: rgba(0,0,0,.35); box-shadow: inset 0 0 0 1px #4a4038; }
+
+  /* ---- Bitmap type, after Dungeon Master on the ST and Amiga ---- */
+  body.style-iso, body.style-iso button, body.style-iso dialog {
+    font-family: "VT323", ui-monospace, monospace; -webkit-font-smoothing: none; -moz-osx-font-smoothing: unset; font-smooth: never; text-rendering: optimizeSpeed;
+  }
+  body.style-iso { font-size: 21px; line-height: 1.12; --ink: #d8d0bc; --ink-soft: #9a8f78; --lapis: #5fd7ff; }
+  body.style-iso h1 { font-family: "Jacquarda Bastarda 9", serif; font-weight: normal; font-size: 36px; letter-spacing: 0; text-shadow: 2px 2px 0 #000; }
+  body.style-iso h2, body.style-iso h3, body.style-iso .chron-day, body.style-iso .seal, body.style-iso .ribbon, body.style-iso .doll .name, body.style-iso .styles button {
+    font-family: "Silkscreen", monospace; font-weight: normal; letter-spacing: 0; text-transform: uppercase;
+  }
+  body.style-iso h2 { font-size: 16px; color: #f0c040; text-shadow: 2px 2px 0 #000; margin: 16px 0 6px; }
+  body.style-iso h3 { font-size: 13px; color: #f0c040; }
+  body.style-iso .seal, body.style-iso .ribbon { font-size: 12px; }
+  body.style-iso .dropcap::first-letter { font-family: "Jacquarda Bastarda 9", serif; font-weight: normal; font-size: 54px; color: #f0c040; text-shadow: 2px 2px 0 #000; padding-top: 2px; }
+  body.style-iso .caption, body.style-iso .latin, body.style-iso .muted, body.style-iso .row .what small, body.style-iso .book-count { font-style: normal; }
+  body.style-iso .caption { color: #f0c040; font-size: 19px; }
+  body.style-iso .row .what small { font-size: 18px; }
+  body.style-iso .styles button { font-size: 10px; font-style: normal; }
+  body.style-iso .chron { font-size: 19px; }
+  body.style-iso .chron time { font-size: 17px; }
+  /* Messages run along the bottom in colour, as in the dungeon. */
+  body.style-iso .note {
+    background: #000; border: none; border-top: 2px solid #3a332c; box-shadow: none; left: 0; right: 0; bottom: 0; transform: none; max-width: none;
+    font-size: 22px; padding: 6px 16px; text-align: left; color: #e8e8e8;
+  }
+  body.style-iso .note .k-you { color: #f0c040; } body.style-iso .note .k-danger { color: #ff5a3a; } body.style-iso .note .k-book { color: #5fd7ff; }
+
   @media (max-width: 900px) {
     body { font-size: 16px; }
     .desk { padding: 10px 6px; align-items: flex-start; }
@@ -231,6 +287,7 @@
     .body { overflow: visible; }
     h1 { font-size: 26px; }
     .ribbon { min-width: 0; flex: 1; padding: 12px 4px 10px; font-size: 14px; }
+    .console { grid-template-columns: 1fr; justify-items: center; }
   }
 </style>
 </head>
@@ -249,8 +306,16 @@
           <div class="tip" id="tip" hidden></div>
         </div>
       </div>
-      <div class="caption" id="caption">The candle is lit…</div>
-      <div class="styles" role="group" aria-label="Style"><button data-style="ink" aria-pressed="true">Ink</button><button data-style="iso" aria-pressed="false">Isometric</button></div>
+      <div class="console">
+        <canvas id="minimap" width="168" height="168" aria-label="Map of the land; click to walk there"></canvas>
+        <div class="console-mid">
+          <div class="caption" id="caption">The candle is lit…</div>
+          <div class="whereabouts" id="whereabouts"></div>
+          <div class="styles" role="group" aria-label="Style"><button data-style="ink" aria-pressed="true">Ink</button><button data-style="iso" aria-pressed="false">Isometric</button></div>
+        </div>
+        <div class="doll" id="doll" aria-label="What you wear and carry"></div>
+      </div>
+      <div class="pack" id="pack" aria-label="Your pack: drag things onto yourself"></div>
     </section>
     <div class="gutter"></div>
     <section class="page right">
@@ -275,6 +340,7 @@ import { ENTRIES, ENTRY, GROUPS, entryHint } from "./bestiary.mjs";
 import { DEFS, drawEntry } from "./figures.mjs";
 import { setBoil, star, PIGMENT } from "./ink.mjs";
 import { towerScene, woodScene } from "./scenes.mjs";
+import { HOME, ITEMS, POS3, SLOTS, SLOT_NAMES, WAYPOINTS, isHome, zonePoint } from "./world.mjs";
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
@@ -384,6 +450,7 @@ async function loadIso() {
     iso = m.createIso($("isoCanvas"));
     sprite = m.sprite;
     renderPage();
+    renderConsole();
     return iso;
   });
   return isoLoading;
@@ -414,7 +481,10 @@ function renderScene() {
   });
   else $("scene").innerHTML = view === "tower" ? towerScene(snap) : woodScene(snap, now());
   $("sceneTitle").textContent = view === "tower" ? "From the Tower" : "Of the Wood";
-  $("towerBtn").textContent = view === "tower" ? "Go down" : "Climb the tower";
+  const tb = $("towerBtn");
+  tb.disabled = view !== "tower" && snap.you.exploring && !snap.you.atWaypoint;
+  tb.textContent = view === "tower" ? "Go down" : snap.you.atWaypoint && snap.you.exploring ? "Return to the tower" : snap.you.exploring ? "Find a waypoint" : "Climb the tower";
+  renderConsole();
   const c = snap.env.canonical;
   const hourWords = c.hour ? `the ${c.ordinal} hour of the ${c.of}` : `the ${c.of}`;
   $("caption").textContent = `${c.office} · ${hourWords} · ${shortDate(snap.now)}`;
@@ -431,6 +501,10 @@ function tipFor(target) {
     else if (n.ready) status = `Ready: ${yieldWords(n.yield)}.`;
     else status = `${Math.floor(n.growth * 100)} parts in a hundred grown. ${n.etaHours ? `Ready in ${hours(n.etaHours)} at this light.` : "It will not grow at this hour."}`;
     return `<b>${esc(n.name)}</b><br>${status}<br><i>${esc(n.rule)}</i>`;
+  }
+  if (target.dataset.waypoint) {
+    const w = WAYPOINTS.find((x) => x.id === target.dataset.waypoint);
+    return snap.you.waypoints.includes(w.id) ? `<b>${esc(w.name)}</b><br>A waypoint you have found. Stand here to return to the tower.` : `<b>A standing stone</b><br>Walk up to it to learn its name.`;
   }
   if (target.dataset.sighting) {
     const s = snap.sightings.find((x) => x.id === Number(target.dataset.sighting));
@@ -462,14 +536,41 @@ $("frame").addEventListener("pointermove", (ev) => {
 });
 $("frame").addEventListener("pointerleave", () => ($("tip").hidden = true));
 $("frame").addEventListener("click", async (ev) => {
+  if (!snap) return;
   const t = targetAt(ev);
-  if (!t || !snap) return;
   $("tip").hidden = true;
-  if (t.dataset.tower) return setView(t.dataset.tower === "up" ? "tower" : "wood");
-  if (t.dataset.node) return gather(t.dataset.node);
-  if (t.dataset.sighting) return lookAt(Number(t.dataset.sighting));
+  if (t?.dataset.tower) {
+    if (t.dataset.tower === "up" && snap.you.exploring) return note("You are far from the tower. Find a waypoint, or walk home.");
+    return setView(t.dataset.tower === "up" ? "tower" : "wood");
+  }
+  if (t?.dataset.node) return gather(t.dataset.node);
+  if (t?.dataset.sighting) return lookAt(Number(t.dataset.sighting));
+  if (t?.dataset.waypoint) return walkTo(WAYPOINTS.find((w) => w.id === t.dataset.waypoint).at);
+  if (style === "iso" && view !== "tower") walkToPointer(ev);
 });
-$("towerBtn").addEventListener("click", () => setView(view === "tower" ? "wood" : "tower"));
+$("frame").addEventListener("contextmenu", (ev) => {
+  if (style !== "iso" || view === "tower" || !snap) return;
+  ev.preventDefault();
+  walkToPointer(ev);
+});
+
+function walkToPointer(ev) {
+  const at = iso?.groundAt(ev.clientX, ev.clientY);
+  if (at) walkTo(at);
+}
+
+async function walkTo([x, z]) {
+  const r = await post("/api/walk", { x, z });
+  if (!r.ok) note(`<span class="k-danger">${esc(r.message)}</span>`, 5000);
+}
+$("towerBtn").addEventListener("click", async () => {
+  if (view === "tower") return setView("wood");
+  if (snap.you.exploring) {
+    const r = await post("/api/recall", {});
+    if (!r.ok) return note(esc(r.message));
+  }
+  setView("tower");
+});
 
 function setView(v) {
   view = v;
@@ -509,19 +610,20 @@ async function gather(id) {
   if (!n) return;
   if (snap.you.restUntil && now() < snap.you.restUntil) return note(`You are nursing your ankle by the fire until ${clock(snap.you.restUntil)}.`);
   if (!n.ready) return note(`The ${esc(n.name)} has nothing to give yet. <i>${esc(n.rule)}</i>`);
-  if (snap.env.risk > 0) {
-    const go = await confirmDark(`It is dark, and there are wolves in the wood. Going down to the <b>${esc(n.name)}</b> carries <b class="danger">${Math.round(snap.env.risk * 100)} chances in a hundred</b> of misfortune.${snap.built.kennel ? "" : " Bran would halve it."}${snap.built.brazier ? "" : " So would a brazier."}`);
+  if (snap.env.risk > 0 && snap.you.light) {
+    const risk = isHome(snap.you.pos) ? snap.env.risk : snap.you.wildRisk;
+    const go = await confirmDark(`It is dark, and there are wolves about. Going to the <b>${esc(n.name)}</b> carries <b class="danger">${Math.round(risk * 100)} chances in a hundred</b> of misfortune, even with the ${esc(ITEMS[snap.you.light].name.toLowerCase())}.${snap.built.kennel ? "" : " Bran would halve it."}${snap.built.brazier ? "" : " So would a brazier."}`);
     if (!go) return;
   }
   const r = await post("/api/gather", { id });
-  if (r.ok) note(`You brought back <b>${yieldWords(r.yield)}</b> from the ${esc(n.name)}.`);
-  else note(`<span class="danger">${esc(r.message)}</span>`, 6000);
+  if (!r.ok) note(`<span class="k-danger">${esc(r.message)}</span>`, 6000);
 }
 
 async function lookAt(id) {
   const s = snap.sightings.find((x) => x.id === id);
-  const r = await post("/api/look", { id });
+  const r = await post("/api/look", { id, from: view === "tower" ? "tower" : "ground" });
   if (!r.ok) return note(esc(r.message));
+  if (r.outcome === "walking") return;
   const e = ENTRY[r.entry ?? s?.entry];
   if (r.isNew) {
     note(`A new page in the Bestiary: <b>${esc(e.name)}</b>.`);
@@ -534,6 +636,109 @@ async function raise(id) {
   const r = await post("/api/build", { id });
   if (!r.ok) note(esc(r.error));
 }
+
+// ---- The console: the map, the paper doll and the pack -------------------------------------------------------
+
+function itemPicture(id) {
+  const img = spriteImg(id, { px: 30 });
+  return img ?? `<span>${esc(ITEMS[id].name.split(" ").pop())}</span>`;
+}
+
+let picked = null; // for touch: tap an item, then tap where it goes
+
+function renderConsole() {
+  if (!snap) return;
+  const eq = snap.you.equip;
+  const resting = snap.you.restUntil && now() < snap.you.restUntil;
+  const cell = (slot, col, row) => {
+    const id = eq[slot];
+    const light = id && ITEMS[id].light;
+    return `<button class="slot${id ? "" : " empty"}${light ? " light" : ""}${picked === id && id ? " picked" : ""}" style="grid-column:${col};grid-row:${row}" data-slot="${slot}" data-label="${SLOT_NAMES[slot]}" ${id ? `draggable="true" data-item="${id}" title="${esc(ITEMS[id].name)}"` : `title="${SLOT_NAMES[slot]}"`}>${id ? itemPicture(id) : ""}</button>`;
+  };
+  $("doll").innerHTML = `<div class="name">Woodward <span class="bar"><i style="width:${resting ? 30 : 100}%"></i></span></div>`
+    + cell("head", 2, 2) + cell("neck", 2, 3) + cell("torso", 2, 4) + cell("legs", 2, 5) + cell("feet", 2, 6) + cell("handL", 1, 4) + cell("handR", 3, 4);
+  const worn = new Set(Object.values(eq));
+  $("pack").innerHTML = snap.you.items.filter((id) => !worn.has(id)).map((id) => `<button class="tile${picked === id ? " picked" : ""}" draggable="true" data-item="${id}" title="${esc(ITEMS[id].name)}: ${esc(ITEMS[id].desc)}">${itemPicture(id)}</button>`).join("");
+  const wp = WAYPOINTS.find((w) => w.id === snap.you.atWaypoint);
+  $("whereabouts").innerHTML = snap.you.exploring
+    ? (wp ? `At the ${esc(wp.name)}.` : "Out in the land. The tower is out of reach until you find a waypoint.")
+    : view === "tower" ? "At the top of the tower." : style === "iso" ? "Right-click the land to walk." : "";
+  drawMinimap();
+}
+
+async function putOn(item, slot) {
+  picked = null;
+  const r = await post("/api/equip", { item, slot });
+  if (!r.ok) note(esc(r.message));
+  renderConsole();
+}
+
+for (const zone of ["doll", "pack"]) {
+  const el = $(zone);
+  el.addEventListener("dragstart", (ev) => { const t = ev.target.closest("[data-item]"); if (t) ev.dataTransfer.setData("text/plain", t.dataset.item); });
+  el.addEventListener("dragover", (ev) => { ev.preventDefault(); (ev.target.closest(".slot") ?? (zone === "pack" ? el : null))?.classList.add("over"); });
+  el.addEventListener("dragleave", (ev) => (ev.target.closest(".slot") ?? el).classList.remove("over"));
+  el.addEventListener("drop", (ev) => {
+    ev.preventDefault();
+    el.querySelectorAll(".over").forEach((x) => x.classList.remove("over"));
+    el.classList.remove("over");
+    const item = ev.dataTransfer.getData("text/plain");
+    if (!item) return;
+    putOn(item, zone === "pack" ? null : ev.target.closest(".slot")?.dataset.slot ?? null);
+  });
+  el.addEventListener("click", (ev) => {
+    const slot = ev.target.closest(".slot");
+    const tile = ev.target.closest(".tile");
+    if (picked && slot) return putOn(picked, slot.dataset.slot);
+    if (picked && zone === "pack" && !tile) return putOn(picked, null);
+    const item = (slot ?? tile)?.dataset.item;
+    picked = item && item !== picked ? item : null;
+    renderConsole();
+  });
+}
+
+// The map: the land seen from above, turned to match the picture (left-right is L = x - z, near-far is D = x + z).
+const MAP = { size: 168, span: 120 };
+function toMap([x, z]) {
+  const k = MAP.size / MAP.span;
+  return [MAP.size / 2 + (x - z) * k * 0.72, MAP.size / 2 + (x + z) * k * 0.72];
+}
+function fromMap(mx, my) {
+  const k = MAP.size / MAP.span * 0.72;
+  const L = (mx - MAP.size / 2) / k, D = (my - MAP.size / 2) / k;
+  return [(D + L) / 2, (D - L) / 2];
+}
+
+function drawMinimap() {
+  const c = $("minimap").getContext("2d");
+  c.imageSmoothingEnabled = false;
+  const S = MAP.size;
+  c.fillStyle = "#24361c"; c.fillRect(0, 0, S, S);
+  const poly = (pts, fill) => { c.fillStyle = fill; c.beginPath(); pts.forEach((p, i) => { const [a, b] = toMap(p); i ? c.lineTo(a, b) : c.moveTo(a, b); }); c.closePath(); c.fill(); };
+  poly([[-60, -60], [60, -60], [60, -44], [-60, -44]], "#3e4a32");               // the hills
+  poly([[-61, -20.1], [49, -20.1], [49, -16.7], [-61, -16.7]], "#2f5aa0");        // the river
+  poly([[12, -32], [32, -32], [32, -16], [12, -16]], "#8a7a3a");                  // the fields
+  poly([[-37, -35], [-22, -35], [-22, -22], [-37, -22]], "#7a6450");              // the village
+  c.strokeStyle = "#5a7a3a"; c.lineWidth = 1;
+  c.beginPath(); const [cx, cy] = toMap([0, 0]); c.ellipse(cx, cy, 11 * S / MAP.span * 0.72 * 1.41, 11 * S / MAP.span * 0.72 * 1.41, 0, 0, Math.PI * 2); c.fillStyle = "#3a5a26"; c.fill();
+  const dot = (p, color, r = 2) => { const [a, b] = toMap(p); c.fillStyle = color; c.fillRect(Math.round(a - r), Math.round(b - r), r * 2, r * 2); };
+  dot(POS3.tower, "#c8c0b0", 3);
+  for (const w of WAYPOINTS) if (snap.you.waypoints.includes(w.id)) dot(w.at, "#f0c040", 3);
+  for (const s of snap.sightings) { const [x, , z] = zonePoint(s); dot([x, z], snap.book[s.entry] ? "#a08870" : "#ff5a3a", 1); }
+  if (snap.you.walk) dot(snap.you.walk.to, "#f0c040", 1);
+  const w = snap.you.walk, t = w ? Math.min(1, Math.max(0, (now() - w.departedAt) / (w.arriveAt - w.departedAt))) : 1;
+  const here = w ? [w.from[0] + (w.to[0] - w.from[0]) * t, w.from[1] + (w.to[1] - w.from[1]) * t] : snap.you.pos;
+  dot(here, "#ffffff", 3);
+  dot(here, "#3f6a3a", 1);
+}
+setInterval(() => { if (snap && !document.hidden) drawMinimap(); }, 250);
+$("minimap").addEventListener("click", (ev) => {
+  if (!snap) return;
+  const r = $("minimap").getBoundingClientRect();
+  const at = fromMap(((ev.clientX - r.left) / r.width) * MAP.size, ((ev.clientY - r.top) / r.height) * MAP.size);
+  if (view === "tower") setView("wood");
+  walkTo(at);
+});
 
 // ---- The right page --------------------------------------------------------------------------------------------
 
@@ -584,7 +789,8 @@ function hourPage() {
 
   out += `<h2>The Household</h2><div class="rows">`;
   const resting = snap.you.restUntil && now() < snap.you.restUntil;
-  out += `<div class="row"><div class="what">Yourself<small>${resting ? `<span class="danger">Nursing a twisted ankle until ${clock(snap.you.restUntil)}.</span>` : "Hale, and ready to go out."}</small></div></div>`;
+  const carrying = snap.you.light ? `You carry a ${ITEMS[snap.you.light].name.toLowerCase()}.` : snap.env.risk > 0 ? `<span class="danger">You have no light in hand, and cannot go out.</span>` : "";
+  out += `<div class="row"><div class="what">Yourself<small>${resting ? `<span class="danger">Nursing a twisted ankle until ${clock(snap.you.restUntil)}.</span>` : snap.you.exploring ? "Out in the land, far from the tower." : "In the clearing, by the lodge."} ${carrying}${snap.you.hound ? " Bran walks at your side." : ""}</small></div></div>`;
   if (snap.built.cot) {
     const w = snap.wat;
     const doing = w.onWatch ? "Keeping the night watch from the tower, slate in hand." : !w.awake ? "Asleep behind a barred door." : w.state === "walking" ? `On his way to the ${esc(snap.nodes[w.target]?.name ?? "wood")}.` : "Looking about for something ready to gather.";
@@ -636,7 +842,13 @@ function bookDetail(e) {
 }
 
 function worksPage() {
-  let out = `<h2>Works</h2><p class="muted">Things to raise in and about the wood, paid for from the store.</p>`;
+  let out = `<h2>Gear</h2><p class="muted">Made from the store, and kept in your pack until you put it on.</p>`;
+  for (const g of snap.gear) {
+    const it = ITEMS[g.id];
+    const cost = Object.entries(g.cost).map(([r, n]) => `<span class="${(snap.inv[r] ?? 0) >= n ? "" : "short"}">${n} ${RES[r]?.name.toLowerCase() ?? r} <span class="muted">(${snap.inv[r] ?? 0})</span></span>`).join("");
+    out += `<div class="work"><div class="row"><h3>${esc(it.name)}</h3>${g.owned ? `<span class="muted">In your pack</span>` : `<button class="seal" data-craft="${g.id}" ${g.affordable ? "" : "disabled"}>Make it</button>`}</div><p>${esc(it.desc)}</p>${g.owned ? "" : `<div class="cost">${cost}</div>`}</div>`;
+  }
+  out += `<h2>Works</h2><p class="muted">Things to raise in and about the wood, paid for from the store.</p>`;
   for (const b of snap.builds) {
     const cost = Object.entries(b.cost).map(([r, n]) => `<span class="${(snap.inv[r] ?? 0) >= n ? "" : "short"}">${n} ${RES[r]?.name.toLowerCase() ?? r} <span class="muted">(${snap.inv[r] ?? 0})</span></span>`).join("");
     const needs = b.needs && !snap.built[b.needs] ? `<span class="short">Needs the ${esc(snap.builds.find((x) => x.id === b.needs).name)} first.</span>` : "";
@@ -667,6 +879,7 @@ $("pageBody").addEventListener("click", async (ev) => {
   if (!t) return;
   if (t.dataset.gather) return gather(t.dataset.gather);
   if (t.dataset.raise) return raise(t.dataset.raise);
+  if (t.dataset.craft) { const r = await post("/api/craft", { id: t.dataset.craft }); if (!r.ok) note(esc(r.error)); return; }
   if (t.dataset.entry) { bookEntry = t.dataset.entry; renderPage(); $("pageBody").scrollTop = 0; return; }
   if (t.id === "bookBack") { bookEntry = null; return renderPage(); }
   if (t.id === "letterDone") { markRead(); letter = null; return renderPage(); }
@@ -716,8 +929,18 @@ function buildLetter() {
 
 // ---- Live ------------------------------------------------------------------------------------------------------
 
+let notedId = 0;
+/** New lines in the Chronicle about you are shown as messages, as in the dungeon. */
+function announce(s) {
+  const fresh = s.journal.filter((j) => j.id > notedId && ["you", "danger", "book"].includes(j.kind));
+  if (notedId && fresh.length) note(fresh.slice(-2).map((j) => `<div class="k-${j.kind}">${esc(j.text)}</div>`).join(""), 6000);
+  notedId = s.journal.at(-1)?.id ?? notedId;
+}
+
 function onSnapshot(s) {
   const first = !snap;
+  announce(s);
+  if (first && s.you.exploring && view === "tower") view = "wood";
   snap = s;
   skew = s.now - Date.now();
   if (first) {

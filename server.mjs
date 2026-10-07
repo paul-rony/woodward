@@ -5,7 +5,7 @@ import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { TICK_MS, build, clamp, gather, guessLocation, look, newState, relocate, snapshot, tick } from "./sim.mjs";
+import { TICK_MS, build, clamp, craft, equip, gather, guessLocation, look, migrate, newState, recall, relocate, snapshot, tick, walk } from "./sim.mjs";
 
 const port = Number(process.env.PORT);
 if (!port) throw new Error("PORT is not set; Cube sets it when it starts the app.");
@@ -22,7 +22,7 @@ const statePath = join(stateDir, "wood.json");
 function load() {
   try {
     const state = JSON.parse(readFileSync(statePath, "utf8"));
-    if (state.version === 1) return state;
+    if (state.version === 1) return migrate(state);
   } catch (err) {
     if (err.code !== "ENOENT") console.error("Could not read the saved wood, starting a new one:", err.message);
   }
@@ -52,6 +52,14 @@ function advance() {
 
 advance();
 setInterval(advance, TICK_MS);
+
+// A walk ends when it ends, not at the next tick: what you find, and what you set out to do, happen on arrival.
+let arrivalTimer = null;
+function scheduleArrival() {
+  clearTimeout(arrivalTimer);
+  const w = state.you.walk;
+  if (w) arrivalTimer = setTimeout(advance, Math.max(0, w.arriveAt - clock()) + 30);
+}
 setInterval(() => {
   for (const res of clients) res.write(": keepalive\n\n");
 }, 15_000);
@@ -95,7 +103,11 @@ function sameOrigin(req) {
 /** Each action advances the wood to now first, so it acts on the present. */
 const ACTIONS = {
   "/api/gather": (body, now) => gather(state, String(body.id), now),
-  "/api/look": (body, now) => look(state, Number(body.id), now),
+  "/api/look": (body, now) => look(state, Number(body.id), now, "you", body.from === "ground" ? "ground" : "tower"),
+  "/api/walk": (body, now) => walk(state, [body.x, body.z], now),
+  "/api/recall": (body, now) => recall(state, now),
+  "/api/equip": (body) => equip(state, String(body.item), body.slot == null ? null : String(body.slot)),
+  "/api/craft": (body, now) => craft(state, String(body.id), now),
   "/api/build": (body, now) => build(state, String(body.id), now),
   "/api/hello": (body, now) => {
     // The first page to open tells the wood where in the world it is, roughly, from its timezone.
@@ -138,6 +150,7 @@ const server = createServer(async (req, res) => {
     tick(state, now); // settles what the action set in motion, such as a moved sky
     save();
     broadcast();
+    scheduleArrival();
     return send(res, 200, result);
   }
   if (req.method === "GET") return sendFile(res, url.pathname.slice(1));

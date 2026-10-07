@@ -2,43 +2,13 @@
 // and squeezed into a 1990s palette with ordered dithering, so it reads like a pre-rendered game of the time.
 // Climbing the tower pulls the camera back over the countryside, where the day's sightings stand.
 import * as THREE from "./vendor/three.module.js";
-import { ENTRY, ZONES } from "./bestiary.mjs";
+import { ENTRY } from "./bestiary.mjs";
+import { HOME, ITEMS, POS3, WAYPOINTS, ld, zonePoint } from "./world.mjs";
 
 const PIXEL = 3; // screen pixels per rendered pixel
 const LEVELS = 8; // per channel: a 512-colour cube, close to what a good 256-colour palette looked like
 
-// ---- Where things are (x east, z south, y up) -----------------------------------------------------------------
-
-/** Placed in screen terms: L runs left to right across the picture, D from far to near. */
-const ld = (L, D) => [(D + L) / 2, (D - L) / 2];
-export const POS3 = {
-  tower: ld(-8, -5), house: ld(-3.6, -5.6), oak: ld(7, -6), hazel1: ld(2, -1.5), hazel2: ld(5.5, 2), bramble: ld(9.5, 4),
-  ring: ld(0.5, 6), moonwort: ld(8.5, 9), skep: ld(-3.5, 1.5), cot: ld(-10.5, 4), kennel: ld(-7, 3.5), brazier: ld(-1.5, -1),
-  cross: ld(3.5, 9.5),
-};
-
-/** The tower view's zones, laid out on the land around the clearing. The north-west is "far" from this camera. */
-const WORLD = {
-  sky: { x: [-34, 14], z: [-34, -12], y: 16 },
-  hills: { x: [-40, 20], z: [-50, -44] },
-  village: { x: [-36, -24], z: [-34, -26] },
-  road: { x: [-22, -12], z: [-20, -12] },
-  river: { x: [-44, 28], z: [-17.2, -16.4] },
-  field: { x: [12, 30], z: [-32, -16] },
-  wood: { arc: [-172, -8], r: 12.6 },
-};
-
-function zonePoint(s) {
-  const e = ENTRY[s.entry];
-  const [x0, x1, y0, y1] = ZONES[e.where];
-  const u = (s.x - x0) / Math.max(1, x1 - x0), v = (s.y - y0) / Math.max(1, y1 - y0);
-  const w = WORLD[e.where];
-  if (w.arc) {
-    const t = ((w.arc[0] + (w.arc[1] - w.arc[0]) * u) * Math.PI) / 180;
-    return [Math.cos(t) * (w.r + v * 1.5), 0, Math.sin(t) * (w.r + v * 1.5)];
-  }
-  return [w.x[0] + (w.x[1] - w.x[0]) * u, w.y ?? 0, w.z[0] + (w.z[1] - w.z[0]) * v];
-}
+// Where things are lives in world.mjs, shared with the server.
 
 // ---- Shared stuff, so rebuilding the dynamic parts allocates no GPU memory ------------------------------------
 
@@ -99,6 +69,7 @@ function initShared() {
     glowCold: new THREE.MeshBasicMaterial({ color: 0xc8ffe8 }),
     glowGold: new THREE.MeshBasicMaterial({ color: 0xfff0b0 }),
   };
+  XRAY = new THREE.MeshBasicMaterial({ color: 0xf0c040, transparent: true, opacity: 0.55, depthFunc: THREE.GreaterDepth, depthWrite: false });
   GEO = {
     box: new THREE.BoxGeometry(1, 1, 1),
     sphere: new THREE.IcosahedronGeometry(1, 1),
@@ -118,6 +89,7 @@ function initShared() {
   };
 }
 
+let XRAY;
 const colorMats = new Map();
 function col(hex) {
   if (!colorMats.has(hex)) colorMats.set(hex, new THREE.MeshLambertMaterial({ color: hex }));
@@ -562,6 +534,45 @@ function entryFigure(e, x, z, s, night, y) {
   return lightFigure(a, x, z, s, y);
 }
 
+function woodwardFigure(you, night) {
+  const g = group(0, 0);
+  const eq = you.equip ?? {};
+  const cloak = eq.torso === "cloak";
+  g.add(mesh(GEO.cone, col(cloak ? 0x2f5a32 : eq.torso ? 0xc9b48a : 0xe0b890), [0, 0.6, 0], [cloak ? 0.4 : 0.33, 1.15, cloak ? 0.4 : 0.33]));
+  if (eq.feet) for (const x of [-0.1, 0.1]) g.add(mesh(GEO.box, col(0x4a3020), [x, 0.05, 0.05], [0.12, 0.1, 0.22]));
+  g.add(mesh(GEO.ball, MAT.skin, [0, 1.28, 0], [0.17, 0.19, 0.17]));
+  if (eq.head === "hood") g.add(mesh(GEO.cone, col(0x3f6a3a), [0, 1.45, -0.02], [0.21, 0.42, 0.21]));
+  if (eq.neck === "horn") g.add(mesh(GEO.ball, col(0xe8dcb8), [0.12, 0.95, 0.2], [0.08, 0.05, 0.05]));
+  for (const [slot, x] of [["handL", -0.36], ["handR", 0.36]]) {
+    const id = eq[slot];
+    if (!id || !ITEM3[id]) continue;
+    const held = ITEM3[id]();
+    held.position.set(x, 0.55, 0.12);
+    held.scale.setScalar(id === "staff" ? 0.95 : 0.6);
+    g.add(held);
+    if (ITEMS[id].light && night) {
+      const l = new THREE.PointLight(0xffb060, id === "lantern" ? 26 : 18, id === "lantern" ? 16 : 12, 1.4);
+      l.position.set(x, 1.3, 0.2);
+      l.userData.flicker = id === "torch";
+      g.add(l);
+    }
+  }
+  return g;
+}
+
+function waypointStone(wp, found, night) {
+  const g = group(...wp.at, { waypoint: wp.id });
+  g.add(mesh(GEO.box, col(0x6a6660), [0, 1.3, 0], [0.9, 2.6, 0.6], [0, 0.4, 0.06]));
+  g.add(mesh(GEO.box, col(0x5a5650), [0.9, 0.4, 0.3], [0.5, 0.8, 0.4], [0, 0.9, 0]));
+  if (found) {
+    g.add(mesh(GEO.box, MAT.gold, [0.18, 1.6, 0.26], [0.3, 0.5, 0.04], [0, 0.4, 0]));
+    const l = new THREE.PointLight(0xffd070, night ? 10 : 4, 8, 1.6);
+    l.position.set(0, 2.2, 0.8);
+    g.add(l);
+  }
+  return g;
+}
+
 function watFigure(x, z, night) {
   return folkFigure({ color: "#4f7a3a", hood: true, hoodColor: "#c0392b", lantern: night }, x, z, 1, night);
 }
@@ -629,7 +640,21 @@ const GOODS = {
   blessings: () => { const g = new THREE.Group(); g.add(mesh(GEO.octa, MAT.gold, [0, 0.6, 0], [0.4, 0.6, 0.4])); return g; },
 };
 
-/** A pre-rendered picture of a Bestiary entry (by id) or a store good, as a PNG data URL. Cached. */
+/** Gear, as carried or laid out in the pack. Each is built standing up, about one unit tall. */
+const ITEM3 = {
+  hood: () => { const g = new THREE.Group(); g.add(mesh(GEO.cone, col(0x3f6a3a), [0, 0.5, 0], [0.45, 1, 0.45])); g.add(mesh(GEO.ball, col(0x2e5230), [0, 0.15, 0.12], [0.42, 0.2, 0.3])); return g; },
+  tunic: () => { const g = new THREE.Group(); g.add(mesh(GEO.cone, col(0xc9b48a), [0, 0.55, 0], [0.55, 1.1, 0.4])); for (const x of [-0.42, 0.42]) g.add(mesh(GEO.cyl, col(0xc9b48a), [x, 0.75, 0], [0.12, 0.6, 0.12], [0, 0, x > 0 ? -0.6 : 0.6])); return g; },
+  hose: () => { const g = new THREE.Group(); for (const x of [-0.16, 0.16]) g.add(mesh(GEO.cyl, col(0x6a4a2a), [x, 0.5, 0], [0.12, 1, 0.12])); g.add(mesh(GEO.box, col(0x6a4a2a), [0, 0.95, 0], [0.5, 0.15, 0.25])); return g; },
+  boots: () => { const g = new THREE.Group(); for (const x of [-0.2, 0.2]) { g.add(mesh(GEO.box, col(0x4a3020), [x, 0.3, 0], [0.22, 0.6, 0.24])); g.add(mesh(GEO.box, col(0x4a3020), [x, 0.08, 0.15], [0.22, 0.16, 0.45])); } return g; },
+  hatchet: () => { const g = new THREE.Group(); g.add(mesh(GEO.cyl, MAT.bark, [0, 0.5, 0], [0.05, 1, 0.05])); g.add(mesh(GEO.box, col(0x8a8a92), [0.14, 0.92, 0], [0.3, 0.2, 0.05])); return g; },
+  torch: () => { const g = new THREE.Group(); g.add(mesh(GEO.cyl, MAT.bark, [0, 0.45, 0], [0.05, 0.9, 0.05])); g.add(mesh(GEO.cyl, col(0x2a2018), [0, 0.92, 0], [0.09, 0.14, 0.09])); g.add(mesh(GEO.cone, MAT.flame, [0, 1.12, 0], [0.12, 0.3, 0.12])); return g; },
+  lantern: () => { const g = new THREE.Group(); g.add(mesh(GEO.box, col(0xf0c860), [0, 0.45, 0], [0.32, 0.5, 0.32])); for (const [x, z] of [[-0.17, -0.17], [0.17, -0.17], [-0.17, 0.17], [0.17, 0.17]]) g.add(mesh(GEO.box, MAT.dark, [x, 0.45, z], [0.04, 0.55, 0.04])); g.add(mesh(GEO.cone, MAT.dark, [0, 0.82, 0], [0.24, 0.2, 0.24])); g.add(mesh(GEO.box, MAT.dark, [0, 0.98, 0], [0.04, 0.16, 0.04])); return g; },
+  horn: () => { const g = new THREE.Group(); g.add(mesh(new THREE.TorusGeometry(0.4, 0.07, 6, 12, Math.PI * 1.1), col(0xe8dcb8), [0, 0.45, 0], [1, 1, 1])); g.add(mesh(GEO.cone, col(0xe8dcb8), [0.4, 0.38, 0], [0.12, 0.24, 0.12], [0, 0, Math.PI])); return g; },
+  staff: () => { const g = new THREE.Group(); g.add(mesh(GEO.cyl, col(0x9a7a4a), [0, 0.9, 0], [0.05, 1.8, 0.05])); g.add(mesh(GEO.cyl, col(0x6a6a72), [0, 0.04, 0], [0.06, 0.08, 0.06])); return g; },
+  cloak: () => { const g = new THREE.Group(); g.add(mesh(GEO.cone, col(0x2f5a32), [0, 0.6, 0], [0.62, 1.2, 0.5])); g.add(mesh(GEO.cone, col(0x2f5a32), [0, 1.25, -0.05], [0.25, 0.35, 0.25])); return g; },
+};
+
+/** A pre-rendered picture of a Bestiary entry (by id), a store good or an item of gear, as a PNG data URL. Cached. */
 export function sprite(id, { px = 48, silhouette = false } = {}) {
   const key = `${id}:${px}:${silhouette}`;
   if (sprites.has(key)) return sprites.get(key);
@@ -655,7 +680,7 @@ export function sprite(id, { px = 48, silhouette = false } = {}) {
   }
   const { renderer, scene, camera, post } = kit;
   const e = ENTRY[id];
-  const obj = e ? entryFigure(e, 0, 0, 1, true, 0) : GOODS[id]();
+  const obj = e ? entryFigure(e, 0, 0, 1, true, 0) : (GOODS[id] ?? ITEM3[id])();
   if (e?.art.shape === "light") obj.position.y = 0;
   scene.add(obj);
   scene.overrideMaterial = silhouette ? kit.shadow : null;
@@ -731,7 +756,16 @@ export function createIso(canvas) {
 
   let dynamic = new THREE.Group();
   scene.add(dynamic);
-  let snap = null, mode = "wood", skew = 0, wat = null, raf = 0, last = 0;
+  let snap = null, mode = "wood", skew = 0, wat = null, you = null, hound = null, marker = null, raf = 0, last = 0;
+  const ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+
+  /** Where you are right now, between the server's snapshots. */
+  function youAt(now) {
+    const w = snap.you.walk;
+    if (!w) return snap.you.pos;
+    const t = THREE.MathUtils.clamp((now - w.departedAt) / (w.arriveAt - w.departedAt), 0, 1);
+    return [w.from[0] + (w.to[0] - w.from[0]) * t, w.from[1] + (w.to[1] - w.from[1]) * t];
+  }
 
   function resize() {
     const w = Math.max(1, canvas.clientWidth), h = Math.max(1, canvas.clientHeight);
@@ -790,7 +824,34 @@ export function createIso(canvas) {
     }
     const works = buildWorks(snap);
     dynamic.add(works.g);
-    if (mode === "tower") {
+    for (const wp of WAYPOINTS) dynamic.add(waypointStone(wp, snap.you.waypoints.includes(wp.id), night));
+    you = woodwardFigure(snap.you, night);
+    you.scale.setScalar(1.5);
+    const ring = mesh(new THREE.RingGeometry(0.5, 0.62, 20), MAT.gold, [0, 0.04, 0], [1, 1, 1], [-Math.PI / 2, 0, 0]);
+    ring.castShadow = false;
+    you.add(ring);
+    // Wherever something stands between you and the camera, your silhouette shows through, as in Diablo.
+    const xray = [];
+    you.traverse((o) => { if (o.isMesh) xray.push(o); });
+    for (const o of xray) {
+      const ghost = new THREE.Mesh(o.geometry, XRAY);
+      ghost.position.copy(o.position); ghost.rotation.copy(o.rotation); ghost.scale.copy(o.scale);
+      ghost.renderOrder = 10;
+      o.parent.add(ghost);
+    }
+    dynamic.add(you);
+    hound = null;
+    if (snap.you.hound) {
+      hound = quadFigure({ color: "#7a6a5a", size: 0.9, legs: "long", ears: "round", tail: "long" }, 0, 0, 0.6);
+      dynamic.add(hound);
+    }
+    marker = null;
+    if (snap.you.walk) {
+      marker = mesh(new THREE.RingGeometry(0.35, 0.5, 16), MAT.gold, [snap.you.walk.to[0], 0.06, snap.you.walk.to[1]], [1, 1, 1], [-Math.PI / 2, 0, 0]);
+      marker.castShadow = false;
+      dynamic.add(marker);
+    }
+    {
       for (const s of snap.sightings) {
         const e = ENTRY[s.entry];
         const [x, y, z] = zonePoint(s);
@@ -826,6 +887,7 @@ export function createIso(canvas) {
     wat = null;
     if (snap.built.cot && (snap.wat.awake || snap.wat.onWatch)) {
       wat = watFigure(0, 0, night);
+      wat.scale.setScalar(1.3);
       dynamic.add(wat);
     }
     scene.add(dynamic);
@@ -862,6 +924,16 @@ export function createIso(canvas) {
       if (o.userData.blink !== undefined) o.visible = (t + o.userData.blink) % 7 > 0.25;
       if (o.userData.hover) o.position.y = 0.9 + Math.sin(t * 2 + o.id) * 0.3;
     });
+    if (you) {
+      const [x, z] = youAt(Date.now() + skew);
+      const moving = !!snap.you.walk && Date.now() + skew < snap.you.walk.arriveAt;
+      you.position.set(x, moving ? Math.abs(Math.sin(t * 9)) * 0.1 : 0, z);
+      if (moving) you.rotation.y = Math.atan2(snap.you.walk.to[0] - snap.you.walk.from[0], snap.you.walk.to[1] - snap.you.walk.from[1]);
+      you.visible = mode !== "tower";
+      if (hound) { hound.position.set(x - 0.9, 0, z + 0.6); hound.rotation.y = you.rotation.y - Math.PI / 2; hound.visible = you.visible; }
+      if (mode !== "tower") view.goalTarget.set(x, 1, z);
+    }
+    if (marker) marker.rotation.z = t;
     if (wat) {
       const [x, y, z] = watPosition(Date.now() + skew);
       wat.position.set(x, y + (snap.wat.state === "walking" ? Math.abs(Math.sin(t * 8)) * 0.08 : 0), z);
@@ -882,7 +954,7 @@ export function createIso(canvas) {
       skew = next.now - Date.now();
       if (nextMode !== mode) {
         mode = nextMode;
-        view.goalTarget.set(...(mode === "tower" ? [-9, 0, -14] : [-1, 2.5, -1]));
+        if (mode === "tower") view.goalTarget.set(-9, 0, -14);
         view.goalZoom = mode === "tower" ? 28 : 9.5;
       }
       rebuild();
@@ -898,10 +970,19 @@ export function createIso(canvas) {
           const d = o.userData;
           if (d.node) return { dataset: { node: d.node } };
           if (d.sighting) return { dataset: { sighting: String(d.sighting) } };
+          if (d.waypoint) return { dataset: { waypoint: d.waypoint } };
           if (d.tower) return { dataset: { tower: mode === "tower" ? "down" : "up" } };
         }
       }
       return null;
+    },
+    /** The spot on the ground under a point on the canvas: [x, z]. */
+    groundAt(clientX, clientY) {
+      const r = canvas.getBoundingClientRect();
+      const ray = new THREE.Raycaster();
+      ray.setFromCamera(new THREE.Vector2(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1), camera);
+      const p = ray.ray.intersectPlane(ground, new THREE.Vector3());
+      return p ? [p.x, p.z] : null;
     },
     stop() {
       cancelAnimationFrame(raf);
